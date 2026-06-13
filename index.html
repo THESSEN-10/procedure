@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <!-- 手順帳 — 汎用「画像＋手順」アプリ 叩き台（単一HTMLモックアップ）
      料理・掃除・園芸・ものづくり…何でも。アカウント不要・端末内完結が思想。
      データはメモリ保持のみ。本番はこの配列を IndexedDB に差し替える。 -->
@@ -368,7 +369,8 @@ function toggleStep(i){
 }
 function markDone(id){
   const d=items.find(x=>x.id===id);
-  const today=new Date().toISOString().slice(0,10);
+  const n=new Date();
+  const today=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`;
   d.log=d.log||[]; d.log.push(today);
   viewState.checked=new Array(d.steps.length).fill(false); // リセット
   paintDetail(d); renderGrid();
