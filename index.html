@@ -150,7 +150,7 @@
   .setwrap{max-width:680px;margin:0 auto}
   .set-title{font-size:26px;font-weight:900;margin-bottom:18px}
   .set-sec{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 16px;margin-bottom:14px;box-shadow:var(--shadow)}
-  .set-sec-h{font-family:"Roboto Mono",monospace;font-size:11px;letter-spacing:.12em;color:var(--faint);text-transform:uppercase;margin-bottom:12px}
+  .set-sec-h{font-size:14px;font-weight:900;letter-spacing:.02em;color:var(--ink);margin-bottom:12px}
   .set-note{font-size:13px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px}
   .set-btns{display:flex;gap:10px;flex-wrap:wrap}
   .set-backup-status{font-size:12px;color:var(--faint);margin-top:10px}
@@ -383,18 +383,13 @@
 
         <div class="set-sec">
           <div class="set-sec-h">データ（バックアップ）</div>
-          <p class="set-note">バックアップは無料。端末内のデータをファイルに保存・復元します。書き出したファイルはご自身のクラウドや「ファイル」に保管してください。</p>
+          <p class="set-note">端末内のデータをファイルに保存・復元します。書き出したファイルはご自身のクラウドや「ファイル」に保管してください。</p>
           <div class="set-btns">
             <button class="dz-btn" type="button" id="btnExportAll">全データを書き出す</button>
             <button class="dz-btn" type="button" id="btnImport">ファイルから取り込む</button>
           </div>
           <input type="file" id="importFile" accept="application/json,.json" style="display:none">
           <p class="set-backup-status" id="backupStatus"></p>
-        </div>
-
-        <div class="set-sec">
-          <div class="set-sec-h">このアプリ</div>
-          <p class="set-note">手順帳 STEP CARDS — 端末内で完結・アカウント不要。データは端末から外に出ません。</p>
         </div>
       </div>
     </section>
