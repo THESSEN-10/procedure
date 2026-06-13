@@ -168,7 +168,7 @@
     <!-- 一覧 -->
     <section id="view-list">
       <div class="toolbar">
-        <div class="search"><span class="ic">⌕</span><input id="q" type="text" placeholder="手順を探す（例：植え替え）"></div>
+        <div class="search"><span class="ic">⌕</span><input id="q" type="text" placeholder="手順を探す（例：そうじ）"></div>
         <button class="add" type="button" onclick="openForm()">＋ 新しい手順</button>
       </div>
       <div class="chips" id="chips"></div>
@@ -177,13 +177,13 @@
 
     <!-- 詳細 -->
     <section id="view-detail" class="hide">
-      <button class="back" type="button" onclick="show('list')">‹ 一覧へ戻る</button>
+      <button class="back" type="button" onclick="history.back()">‹ 一覧へ戻る</button>
       <div id="detailBody"></div>
     </section>
 
     <!-- 登録/編集 -->
     <section id="view-form" class="hide">
-      <button class="back" type="button" onclick="show('list')">‹ 保存せず戻る</button>
+      <button class="back" type="button" onclick="history.back()">‹ 保存せず戻る</button>
       <div class="formwrap">
         <h1 style="font-size:26px;font-weight:900;margin-bottom:4px" id="formTitle">手順を登録</h1>
         <p class="hint" style="margin-bottom:22px">写真と手順を入れるだけ。難しい設定はありません。後からいつでも直せます。</p>
@@ -198,24 +198,24 @@
         </div>
 
         <div class="row2">
-          <div class="field"><label>タイトル</label><input type="text" id="fName" placeholder="例：シンパクの植え替え"></div>
+          <div class="field"><label>タイトル</label><input type="text" id="fName" placeholder="例：カレーの作り方"></div>
           <div class="field"><label>カテゴリ</label>
             <select id="fCat"><option>料理</option><option>掃除</option><option>家事</option><option>園芸・盆栽</option><option>ものづくり</option><option>その他</option></select>
           </div>
         </div>
         <div class="row2">
-          <div class="field"><label>場所・道具メモ <span class="opt">任意</span></label><input type="text" id="fPlace" placeholder="例：作業台 / ベランダ"></div>
+          <div class="field"><label>場所・道具メモ <span class="opt">任意</span></label><input type="text" id="fPlace" placeholder="例：キッチン"></div>
           <div class="field"><label>かかる時間（分） <span class="opt">任意</span></label><input type="text" id="fTime" placeholder="例：30" inputmode="numeric"></div>
         </div>
 
         <div class="field">
           <label>用意するもの <span class="opt">任意・読点で区切る</span></label>
-          <input type="text" id="fTools" placeholder="例：剣先スコップ、針金、赤玉土、鉢底ネット">
+          <input type="text" id="fTools" placeholder="例：包丁、まな板、計量カップ">
         </div>
 
         <div class="field">
           <label>注意・コツ <span class="opt">任意</span></label>
-          <input type="text" id="fCaution" placeholder="例：真夏と真冬は避ける／太い根は切りすぎない">
+          <input type="text" id="fCaution" placeholder="例：火のそばを離れない／熱いので注意">
           <p class="hint">ここに書いた内容は詳細画面の上部に目立つ帯で出ます。</p>
         </div>
 
@@ -223,12 +223,12 @@
           <label>手順</label>
           <div id="stepList"></div>
           <button class="addstep" type="button" onclick="addStepRow()">＋ 手順を追加</button>
-          <p class="hint">「赤玉土7」「針金2本」のように数字を入れると、表示時に色付きチップで強調されます。</p>
+          <p class="hint">「塩2g」「ねじ4本」のように数字を入れると、表示時に色付きチップで強調されます。</p>
         </div>
 
         <div class="formbar">
           <button class="save" type="button" onclick="saveDish()">保存する</button>
-          <button class="cancel" type="button" onclick="show('list')">やめる</button>
+          <button class="cancel" type="button" onclick="history.back()">やめる</button>
         </div>
       </div>
     </section>
@@ -340,10 +340,11 @@ function show(v){["list","detail","form"].forEach(x=>$("#view-"+x).classList.tog
 
 function fmt(t){
   let h=t.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
-  // {数値}＋単位、または {大さじ3} のような語＋数字
-  h=h.replace(/\{([^}]+)\}\s*([^\s、。]{0,2})/g,(m,inner,u)=>{
-    const num=inner, unit=(u&&/[^A-Za-z0-9]/.test(u[0]))?u:(u||"");
-    return `<span class="qty"><span class="num">${num}</span>${unit?`<span class="unit">${unit}</span>`:""}</span>`;
+  // {数値}＋単位。単位は「ラテン文字/記号の連続」「つ」「漢字・カタカナ1文字」のみ。
+  // 助詞や動詞（を・ず・で・開ける等）は単位に取り込まない。
+  h=h.replace(/\{([^}]+)\}([A-Za-z%‰°ℓ]+|つ|[一-龯々ヵヶァ-ヴ])?/g,(m,inner,u)=>{
+    const unit=u||"";
+    return `<span class="qty"><span class="num">${inner}</span>${unit?`<span class="unit">${unit}</span>`:""}</span>`;
   });
   return h;
 }
@@ -369,12 +370,14 @@ function renderGrid(){
 
 /* 詳細 */
 let viewState={};
-function openDetail(id){
+function renderDetail(id){ // 履歴を触らずに詳細を描画
   const d=items.find(x=>x.id===id);
+  if(!d){show("list");return}
   viewState={id,checked:new Array(d.steps.length).fill(false)};
   paintDetail(d);
   show("detail");
 }
+function openDetail(id){ renderDetail(id); history.pushState({v:"detail",id},""); } // 前進：履歴を積む
 function paintDetail(d){
   const photo=d.photo?`<img src="${d.photo}" alt=""><span class="stamp">仕上がり目安</span>`:`<div class="ph"><span class="cam">📷</span><span style="font-family:'Roboto Mono',monospace;font-size:12px">写真 未登録</span></div>`;
   const caution=d.cautions.length?`<div class="caution"><div class="lbl">注意・コツ</div><ul>${d.cautions.map(c=>`<li>${fmt(c)}</li>`).join("")}</ul></div>`:"";
@@ -424,7 +427,8 @@ async function markDone(id){
 }
 
 /* フォーム */
-function openForm(id){
+function openForm(id){ renderForm(id); history.pushState({v:"form",id:id||null},""); } // 前進：履歴を積む
+function renderForm(id){ // 履歴を触らずにフォームを描画
   editingId=id||null; $("#formTitle").textContent=id?"手順を編集":"手順を登録";
   $("#stepList").innerHTML=""; formPhoto=null; resetDrop();
   if(id){
@@ -493,7 +497,9 @@ async function saveDish(){
   try{ await itemPut(saved); }
   catch(e){ toast("保存に失敗しました"); return; }
   const goId=saved.id;
-  show("list");renderGrid();openDetail(goId);toast("保存しました");
+  renderGrid();renderDetail(goId);
+  history.replaceState({v:"detail",id:goId},""); // フォーム履歴を詳細に置換（戻る→一覧/元の詳細）
+  toast("保存しました");
 }
 
 /* Wake Lock */
@@ -507,6 +513,14 @@ $("#wakeBtn").addEventListener("click",async()=>{
 });
 
 $("#q").addEventListener("input",renderGrid);
+
+/* 戻る/進む（マウスの戻るボタン含む）で画面遷移。履歴stateが画面の真実 */
+window.addEventListener("popstate",e=>{
+  const s=e.state;
+  if(s&&s.v==="detail") renderDetail(s.id);
+  else if(s&&s.v==="form") renderForm(s.id);
+  else show("list");
+});
 
 /* ===== 起動 ===== */
 async function boot(){
