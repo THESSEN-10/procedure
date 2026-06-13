@@ -1,0 +1,432 @@
+<!-- 手順帳 — 汎用「画像＋手順」アプリ 叩き台（単一HTMLモックアップ）
+     料理・掃除・園芸・ものづくり…何でも。アカウント不要・端末内完結が思想。
+     データはメモリ保持のみ。本番はこの配列を IndexedDB に差し替える。 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>手順帳 — STEP CARDS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FAF7F1; --paper-2:#EFEADD; --card:#FFFFFF;
+    --ink:#1E2330; --ink-soft:#56607A; --faint:#9A9BA8;
+    --line:#E2DCCD; --indigo:#2C4A78; --indigo-deep:#1E365A; --indigo-wash:#EAF0F8;
+    --amber:#C98A2B; --amber-wash:#FCF2DD; --ok:#2F7D55;
+    --shadow:0 1px 2px rgba(30,35,48,.05), 0 10px 28px rgba(30,35,48,.07);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:"Zen Kaku Gothic New",system-ui,sans-serif;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.45}
+  .mono{font-family:"Roboto Mono",monospace}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  img{display:block;max-width:100%}
+  .app{max-width:1040px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+
+  /* header */
+  header.bar{position:sticky;top:0;z-index:30;background:var(--paper);
+    display:flex;align-items:center;gap:14px;padding:14px 18px 12px;border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+  .brand .logo{font-weight:900;font-size:23px;letter-spacing:.06em;color:var(--ink)}
+  .brand .logo b{color:var(--indigo)}
+  .brand .sub{font-family:"Roboto Mono",monospace;font-size:10px;letter-spacing:.22em;color:var(--faint);text-transform:uppercase}
+  .wake{display:flex;align-items:center;gap:7px;font-family:"Roboto Mono",monospace;font-size:11px;letter-spacing:.05em;
+    color:var(--ink-soft);padding:7px 11px;border:1.5px solid var(--line);border-radius:999px;background:var(--card)}
+  .wake .dot{width:8px;height:8px;border-radius:50%;background:#BFC4CF}
+  .wake.on{color:var(--indigo);border-color:var(--indigo)}
+  .wake.on .dot{background:var(--indigo);box-shadow:0 0 0 3px var(--indigo-wash)}
+
+  main{flex:1;padding:18px 18px 64px}
+
+  /* list */
+  .toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .search{flex:1;min-width:200px;display:flex;align-items:center;gap:9px;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px}
+  .search input{border:none;background:none;outline:none;font-size:15px;width:100%;font-family:inherit;color:var(--ink)}
+  .search .ic{color:var(--faint);font-size:16px}
+  .add{background:var(--indigo);color:#fff;font-weight:700;font-size:15px;padding:13px 18px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 0 var(--indigo-deep)}
+  .add:active{transform:translateY(1px);box-shadow:0 1px 0 var(--indigo-deep)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .chip{font-size:13px;font-weight:500;padding:7px 14px;border-radius:999px;background:var(--paper-2);color:var(--ink-soft)}
+  .chip.sel{background:var(--ink);color:var(--paper)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+  .card-item{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);text-align:left;display:flex;flex-direction:column;transition:transform .12s,box-shadow .12s}
+  .card-item:active{transform:translateY(1px)}
+  .card-item:hover{box-shadow:0 2px 4px rgba(30,35,48,.07),0 16px 32px rgba(30,35,48,.1)}
+  .thumb{aspect-ratio:4/3;background:var(--paper-2);position:relative;overflow:hidden}
+  .thumb img{width:100%;height:100%;object-fit:cover}
+  .thumb .ph{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--faint);
+    background:repeating-linear-gradient(135deg,#EDE7D8 0 12px,#E9E2D0 12px 24px)}
+  .thumb .ph .cam{font-size:26px;opacity:.5}
+  .thumb .ph span{font-size:11px;font-family:"Roboto Mono",monospace;letter-spacing:.05em}
+  .thumb .cattab{position:absolute;top:0;left:14px;background:var(--indigo);color:#fff;font-size:11px;font-weight:700;padding:5px 10px 6px;border-radius:0 0 8px 8px}
+  .card-item .body{padding:13px 14px 14px}
+  .card-item h3{font-size:18px;font-weight:900;letter-spacing:.01em;margin-bottom:8px;line-height:1.25}
+  .meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .tag{font-family:"Roboto Mono",monospace;font-size:11px;font-weight:700;letter-spacing:.03em;padding:3px 8px;border-radius:6px;background:var(--paper-2);color:var(--ink-soft)}
+  .tag.done{background:var(--indigo-wash);color:var(--indigo)}
+
+  /* detail */
+  .back{display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:14px;color:var(--ink-soft);padding:9px 4px;margin-bottom:6px}
+  .detail-head{display:flex;justify-content:flex-end;gap:10px}
+  .edit-btn{font-size:14px;font-weight:700;color:var(--ink);padding:10px 16px;border:1.5px solid var(--line);border-radius:10px;background:var(--card)}
+  .hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:22px;align-items:start;margin-top:6px}
+  .hero .photo{aspect-ratio:4/3;border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow);background:var(--paper-2);position:relative}
+  .hero .photo img{width:100%;height:100%;object-fit:cover}
+  .hero .photo .stamp{position:absolute;bottom:10px;left:10px;background:rgba(30,35,48,.82);color:var(--paper);font-family:"Roboto Mono",monospace;font-size:11px;letter-spacing:.1em;padding:5px 10px;border-radius:7px}
+  .hero .photo .ph{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--faint);background:repeating-linear-gradient(135deg,#EDE7D8 0 14px,#E9E2D0 14px 28px)}
+  .hero .photo .ph .cam{font-size:34px;opacity:.5}
+  .titleblock h1{font-size:33px;font-weight:900;letter-spacing:.01em;line-height:1.14}
+  .titleblock .submeta{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0 16px}
+
+  .caution{background:var(--amber-wash);border:1.5px solid #ECD9A6;border-left:5px solid var(--amber);border-radius:11px;padding:13px 15px;margin-bottom:14px}
+  .caution .lbl{display:flex;align-items:center;gap:7px;font-weight:900;color:#9A6A12;font-size:13px;letter-spacing:.03em;margin-bottom:8px}
+  .caution ul{list-style:none;display:flex;flex-direction:column;gap:7px}
+  .caution li{font-size:15px;font-weight:500;line-height:1.45;display:flex;gap:8px}
+  .caution li::before{content:"✓";font-weight:700;color:var(--amber);flex:none}
+
+  .tools{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .tools .lbl{font-family:"Roboto Mono",monospace;font-size:11px;letter-spacing:.08em;color:var(--faint);padding-top:5px}
+  .toolchip{background:var(--card);border:1.5px solid var(--line);font-size:13px;font-weight:500;padding:5px 11px;border-radius:8px}
+
+  /* steps with check-off */
+  .steps-h{display:flex;align-items:center;gap:10px;margin:24px 0 6px}
+  .steps-h .k{font-family:"Roboto Mono",monospace;font-size:11px;letter-spacing:.18em;color:var(--faint);text-transform:uppercase}
+  .steps-h .rule{flex:1;height:1px;background:var(--line)}
+  .steps-h .prog{font-family:"Roboto Mono",monospace;font-size:12px;color:var(--indigo);font-weight:700}
+  .step{display:flex;gap:13px;padding:13px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+  .step:last-child{border-bottom:none}
+  .check{flex:none;width:30px;height:30px;border-radius:50%;border:2px solid var(--line);background:var(--card);
+    display:flex;align-items:center;justify-content:center;font-size:15px;color:transparent;margin-top:2px;transition:.12s}
+  .check:hover{border-color:var(--indigo)}
+  .step.done .check{background:var(--indigo);border-color:var(--indigo);color:#fff}
+  .step .n{flex:none;width:26px;font-family:"Roboto Mono",monospace;font-weight:700;font-size:16px;color:var(--ink-soft);text-align:center;padding-top:5px}
+  .step .txt{font-size:16px;line-height:1.5;padding-top:4px;flex:1}
+  .step.done .txt{color:var(--faint)}
+  .qty{display:inline-flex;align-items:baseline;gap:2px;background:var(--indigo);color:#fff;border-radius:999px;font-family:"Roboto Mono",monospace;font-weight:700;padding:1px 11px 2px;margin:0 2px;vertical-align:1px;box-shadow:0 1px 0 var(--indigo-deep)}
+  .step.done .qty{background:#A9B2C4;box-shadow:none}
+  .qty .num{font-size:18px;line-height:1}
+  .qty .unit{font-size:11px}
+
+  /* completion / やったこと */
+  .finish{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:24px;background:var(--card);border:1px solid var(--line);border-radius:13px;padding:15px 18px;box-shadow:var(--shadow)}
+  .finish .fbtn{background:var(--ok);color:#fff;font-weight:700;font-size:15px;padding:12px 20px;border-radius:11px;box-shadow:0 2px 0 #245F41}
+  .finish .fbtn:active{transform:translateY(1px);box-shadow:0 1px 0 #245F41}
+  .finish .log{font-size:13px;color:var(--ink-soft)}
+  .finish .log b{color:var(--ink)}
+  .finish .log .none{color:var(--faint)}
+
+  /* toast */
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);
+    font-weight:700;font-size:14px;padding:13px 22px;border-radius:999px;opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* form */
+  .formwrap{max-width:680px;margin:0 auto}
+  .field{margin-bottom:18px}
+  .field>label{display:block;font-weight:700;font-size:14px;margin-bottom:7px}
+  .field>label .opt{color:var(--faint);font-weight:500;font-size:12px;margin-left:6px}
+  .field input[type=text],.field textarea,.field select{width:100%;font-family:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:12px 13px;outline:none}
+  .field input:focus,.field textarea:focus,.field select:focus{border-color:var(--indigo)}
+  .field textarea{resize:vertical;min-height:60px;line-height:1.5}
+  .drop{border:2px dashed var(--line);border-radius:13px;background:var(--paper-2);aspect-ratio:16/7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:var(--faint);cursor:pointer;position:relative;overflow:hidden}
+  .drop:hover{border-color:var(--indigo);color:var(--ink-soft)}
+  .drop img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .drop .cam{font-size:30px;opacity:.55}
+  .drop input{display:none}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .steprow{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+  .steprow .sn{flex:none;width:30px;height:46px;display:flex;align-items:center;justify-content:center;font-family:"Roboto Mono",monospace;font-weight:700;color:var(--faint)}
+  .steprow textarea{flex:1;min-height:46px}
+  .steprow .del{flex:none;color:var(--faint);font-size:20px;padding:8px;align-self:center}
+  .addstep{font-size:14px;font-weight:700;color:var(--indigo);padding:8px 2px}
+  .formbar{display:flex;gap:12px;margin-top:26px}
+  .save{flex:1;background:var(--indigo);color:#fff;font-weight:700;font-size:16px;padding:15px;border-radius:12px;box-shadow:0 2px 0 var(--indigo-deep)}
+  .save:active{transform:translateY(1px);box-shadow:0 1px 0 var(--indigo-deep)}
+  .cancel{padding:15px 22px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);font-weight:700;font-size:15px}
+  .hint{font-size:12px;color:var(--faint);margin-top:6px;line-height:1.5}
+  .hide{display:none !important}
+
+  @media(max-width:680px){
+    .hero{grid-template-columns:1fr}
+    .titleblock h1{font-size:27px}
+    .row2{grid-template-columns:1fr}
+    .brand .sub{display:none}
+  }
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div class="brand"><span class="logo">手順<b>帳</b></span><span class="sub">STEP CARDS</span></div>
+    <button class="wake" id="wakeBtn" type="button" title="作業中に画面が消えないようにする">
+      <span class="dot"></span><span id="wakeTxt">画面オフ防止</span>
+    </button>
+  </header>
+
+  <main>
+    <!-- 一覧 -->
+    <section id="view-list">
+      <div class="toolbar">
+        <div class="search"><span class="ic">⌕</span><input id="q" type="text" placeholder="手順を探す（例：植え替え）"></div>
+        <button class="add" type="button" onclick="openForm()">＋ 新しい手順</button>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <!-- 詳細 -->
+    <section id="view-detail" class="hide">
+      <button class="back" type="button" onclick="show('list')">‹ 一覧へ戻る</button>
+      <div id="detailBody"></div>
+    </section>
+
+    <!-- 登録/編集 -->
+    <section id="view-form" class="hide">
+      <button class="back" type="button" onclick="show('list')">‹ 保存せず戻る</button>
+      <div class="formwrap">
+        <h1 style="font-size:26px;font-weight:900;margin-bottom:4px" id="formTitle">手順を登録</h1>
+        <p class="hint" style="margin-bottom:22px">写真と手順を入れるだけ。難しい設定はありません。後からいつでも直せます。</p>
+
+        <div class="field">
+          <label>写真 <span class="opt">完成形や仕上がりの目安に</span></label>
+          <label class="drop" id="drop">
+            <input type="file" id="photoInput" accept="image/*">
+            <span class="cam" id="dropIcon">📷</span>
+            <span id="dropTxt" style="font-family:'Roboto Mono',monospace;font-size:12px">タップして写真を選ぶ</span>
+          </label>
+        </div>
+
+        <div class="row2">
+          <div class="field"><label>タイトル</label><input type="text" id="fName" placeholder="例：シンパクの植え替え"></div>
+          <div class="field"><label>カテゴリ</label>
+            <select id="fCat"><option>料理</option><option>掃除</option><option>家事</option><option>園芸・盆栽</option><option>ものづくり</option><option>その他</option></select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>場所・道具メモ <span class="opt">任意</span></label><input type="text" id="fPlace" placeholder="例：作業台 / ベランダ"></div>
+          <div class="field"><label>かかる時間（分） <span class="opt">任意</span></label><input type="text" id="fTime" placeholder="例：30" inputmode="numeric"></div>
+        </div>
+
+        <div class="field">
+          <label>用意するもの <span class="opt">任意・読点で区切る</span></label>
+          <input type="text" id="fTools" placeholder="例：剣先スコップ、針金、赤玉土、鉢底ネット">
+        </div>
+
+        <div class="field">
+          <label>注意・コツ <span class="opt">任意</span></label>
+          <input type="text" id="fCaution" placeholder="例：真夏と真冬は避ける／太い根は切りすぎない">
+          <p class="hint">ここに書いた内容は詳細画面の上部に目立つ帯で出ます。</p>
+        </div>
+
+        <div class="field">
+          <label>手順</label>
+          <div id="stepList"></div>
+          <button class="addstep" type="button" onclick="addStepRow()">＋ 手順を追加</button>
+          <p class="hint">「赤玉土7」「針金2本」のように数字を入れると、表示時に色付きチップで強調されます。</p>
+        </div>
+
+        <div class="formbar">
+          <button class="save" type="button" onclick="saveDish()">保存する</button>
+          <button class="cancel" type="button" onclick="show('list')">やめる</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+let items = [
+  {
+    id:1, name:"シンパクの植え替え", cat:"園芸・盆栽", place:"ベランダ", time:30, photo:null,
+    tools:["剣先スコップ","針金","赤玉土","桐生砂","鉢底ネット"],
+    cautions:["真夏・真冬は避け、春か秋に行う","太い根は切りすぎない（1/3まで）"],
+    steps:[
+      {body:"鉢から根鉢ごと抜き、古い土を{1}/3ほど落とす"},
+      {body:"伸びすぎた根を整理し、長い根を{1}/3切り戻す"},
+      {body:"用土は赤玉土{7}：桐生砂{3}で混ぜておく"},
+      {body:"鉢底ネットを敷き、針金{1}本で幹を固定する"},
+      {body:"用土を入れて箸で隙間を突き、水が透明になるまで{1}回たっぷり水やり"},
+    ],
+    log:["2026-04-12"]
+  },
+  {
+    id:2, name:"換気扇の油汚れ落とし", cat:"掃除", place:"キッチン", time:45, photo:null,
+    tools:["ゴム手袋","重曹","古歯ブラシ","スポンジ"],
+    cautions:["作業前に必ず換気扇の電源を切る","シロッコファンは無理に曲げない"],
+    steps:[
+      {body:"電源を切り、フィルターとファンを外す"},
+      {body:"60℃のお湯{2}Lに重曹{大さじ3}を溶かす"},
+      {body:"つけ置き{30}分。油が浮いたら歯ブラシでこする"},
+      {body:"よくすすいで完全に乾かしてから戻す"},
+    ],
+    log:[]
+  },
+  {
+    id:3, name:"革のキーホルダー", cat:"ものづくり", place:"作業机", time:60, photo:null,
+    tools:["革ハギレ","菱目打ち","蝋引き糸","木槌","コバ磨き"],
+    cautions:["菱目打ちは下にゴム板を敷く","糸は縫う長さの{4}倍を用意"],
+    steps:[
+      {body:"型紙に合わせて革を切り出し、穴位置に印をつける"},
+      {body:"菱目打ちで縫い穴を{6}つ開ける"},
+      {body:"両端から手縫いで{1}本ずつ通し、返し縫いで留める"},
+      {body:"コバを水で湿らせ、{2}回磨いて仕上げる"},
+    ],
+    log:["2026-03-02","2026-05-20"]
+  },
+  {
+    id:4, name:"基本のかつおだし", cat:"料理", place:"コンロ", time:15, photo:null,
+    tools:["鍋","ざる","キッチンペーパー"],
+    cautions:["昆布は沸騰前に取り出す（ぬめり防止）"],
+    steps:[
+      {body:"水{1}Lに昆布{10}gを入れ、弱火にかける"},
+      {body:"沸騰直前で昆布を取り出す"},
+      {body:"かつお節{20}gを加え、{1}分煮て火を止める"},
+      {body:"そのまま沈むまで置き、ペーパーで濾す"},
+    ],
+    log:[]
+  },
+];
+let nextId=6, activeCat="すべて", editingId=null, formPhoto=null;
+const cats=["すべて","料理","掃除","家事","園芸・盆栽","ものづくり","その他"];
+const $=s=>document.querySelector(s);
+
+function show(v){["list","detail","form"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));window.scrollTo(0,0)}
+
+function fmt(t){
+  let h=t.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  // {数値}＋単位、または {大さじ3} のような語＋数字
+  h=h.replace(/\{([^}]+)\}\s*([^\s、。]{0,2})/g,(m,inner,u)=>{
+    const num=inner, unit=(u&&/[^A-Za-z0-9]/.test(u[0]))?u:(u||"");
+    return `<span class="qty"><span class="num">${num}</span>${unit?`<span class="unit">${unit}</span>`:""}</span>`;
+  });
+  return h;
+}
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800)}
+
+/* 一覧 */
+function renderChips(){$("#chips").innerHTML=cats.map(c=>`<button class="chip ${c===activeCat?'sel':''}" type="button" onclick="setCat('${c}')">${c}</button>`).join("")}
+function setCat(c){activeCat=c;renderChips();renderGrid()}
+function renderGrid(){
+  const q=$("#q").value.trim();
+  const list=items.filter(d=>(activeCat==="すべて"||d.cat===activeCat)&&(!q||d.name.includes(q)));
+  if(!list.length){$("#grid").innerHTML=`<div style="grid-column:1/-1;padding:48px 0;text-align:center;color:var(--faint)">該当なし。「＋ 新しい手順」から追加できます。</div>`;return}
+  $("#grid").innerHTML=list.map(d=>{
+    const thumb=d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph"><span class="cam">📷</span><span>写真なし</span></div>`;
+    const last=d.log&&d.log.length?`<span class="tag done">✓ ${d.log[d.log.length-1]}</span>`:"";
+    return `<button class="card-item" type="button" onclick="openDetail(${d.id})">
+      <div class="thumb">${thumb}<span class="cattab">${d.cat}</span></div>
+      <div class="body"><h3>${d.name}</h3>
+        <div class="meta">${d.time?`<span class="tag">⏱ ${d.time}分</span>`:""}${last}</div>
+      </div></button>`;
+  }).join("");
+}
+
+/* 詳細 */
+let viewState={};
+function openDetail(id){
+  const d=items.find(x=>x.id===id);
+  viewState={id,checked:new Array(d.steps.length).fill(false)};
+  paintDetail(d);
+  show("detail");
+}
+function paintDetail(d){
+  const photo=d.photo?`<img src="${d.photo}" alt=""><span class="stamp">仕上がり目安</span>`:`<div class="ph"><span class="cam">📷</span><span style="font-family:'Roboto Mono',monospace;font-size:12px">写真 未登録</span></div>`;
+  const caution=d.cautions.length?`<div class="caution"><div class="lbl">注意・コツ</div><ul>${d.cautions.map(c=>`<li>${fmt(c)}</li>`).join("")}</ul></div>`:"";
+  const tools=d.tools&&d.tools.length?`<div class="tools"><span class="lbl">用意するもの</span>${d.tools.map(t=>`<span class="toolchip">${t}</span>`).join("")}</div>`:"";
+  const done=viewState.checked.filter(Boolean).length;
+  const steps=d.steps.map((s,i)=>`
+    <div class="step ${viewState.checked[i]?'done':''}" id="st${i}">
+      <button class="check" type="button" onclick="toggleStep(${i})">✓</button>
+      <div class="n">${i+1}</div>
+      <div class="txt">${fmt(s.body)}</div>
+    </div>`).join("");
+  const logHtml=d.log&&d.log.length
+    ?`前回 <b>${d.log[d.log.length-1]}</b>・通算 <b>${d.log.length}</b>回`
+    :`<span class="none">まだ記録なし</span>`;
+  $("#detailBody").innerHTML=`
+    <div class="detail-head"><button class="edit-btn" type="button" onclick="openForm(${d.id})">編集</button></div>
+    <div class="hero">
+      <div class="photo">${photo}</div>
+      <div class="titleblock">
+        <h1>${d.name}</h1>
+        <div class="submeta"><span class="tag">${d.cat}</span>${d.place?`<span class="tag">📍 ${d.place}</span>`:""}${d.time?`<span class="tag">⏱ ${d.time}分</span>`:""}</div>
+        ${caution}${tools}
+      </div>
+    </div>
+    <div class="steps-h"><span class="k">手順</span><span class="rule"></span><span class="prog">${done}/${d.steps.length}</span></div>
+    ${steps}
+    <div class="finish">
+      <button class="fbtn" type="button" onclick="markDone(${d.id})">✓ やった！記録する</button>
+      <span class="log">${logHtml}</span>
+    </div>`;
+}
+function toggleStep(i){
+  viewState.checked[i]=!viewState.checked[i];
+  const d=items.find(x=>x.id===viewState.id);
+  paintDetail(d);
+}
+function markDone(id){
+  const d=items.find(x=>x.id===id);
+  const today=new Date().toISOString().slice(0,10);
+  d.log=d.log||[]; d.log.push(today);
+  viewState.checked=new Array(d.steps.length).fill(false); // リセット
+  paintDetail(d); renderGrid();
+  toast("お疲れさま！記録しました");
+}
+
+/* フォーム */
+function openForm(id){
+  editingId=id||null; $("#formTitle").textContent=id?"手順を編集":"手順を登録";
+  $("#stepList").innerHTML=""; formPhoto=null; resetDrop();
+  if(id){
+    const d=items.find(x=>x.id===id);
+    $("#fName").value=d.name;$("#fCat").value=d.cat;$("#fPlace").value=d.place||"";$("#fTime").value=d.time||"";
+    $("#fTools").value=(d.tools||[]).join("、");
+    $("#fCaution").value=(d.cautions||[]).join("／").replace(/\{|\}/g,"");
+    d.steps.forEach(s=>addStepRow(s.body));
+    if(d.photo){formPhoto=d.photo;fillDrop(d.photo)}
+  }else{
+    $("#fName").value="";$("#fCat").value="料理";$("#fPlace").value="";$("#fTime").value="";
+    $("#fTools").value="";$("#fCaution").value=""; addStepRow();addStepRow();
+  }
+  show("form");
+}
+function addStepRow(val=""){
+  const n=$("#stepList").children.length+1;
+  const row=document.createElement("div");row.className="steprow";
+  row.innerHTML=`<div class="sn">${n}</div><textarea placeholder="手順を入力">${val.replace(/\{|\}/g,"")}</textarea><button class="del" type="button" title="削除">×</button>`;
+  row.querySelector(".del").onclick=()=>{row.remove();renumber()};
+  $("#stepList").appendChild(row);
+}
+function renumber(){[...$("#stepList").children].forEach((r,i)=>r.querySelector(".sn").textContent=i+1)}
+function resetDrop(){$("#drop").querySelector("img")?.remove();$("#dropIcon").style.display="";$("#dropTxt").textContent="タップして写真を選ぶ"}
+function fillDrop(src){resetDrop();const img=document.createElement("img");img.src=src;$("#drop").appendChild(img);$("#dropIcon").style.display="none";$("#dropTxt").textContent=""}
+$("#photoInput").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;formPhoto=URL.createObjectURL(f);fillDrop(formPhoto)});
+
+function saveDish(){
+  const name=$("#fName").value.trim();
+  if(!name){$("#fName").focus();$("#fName").style.borderColor="var(--indigo)";toast("タイトルを入れてください");return}
+  const toToken=t=>t.replace(/(大さじ\d+|小さじ\d+|\d+(?:\/\d+)?(?:\.\d+)?)/g,"{$1}");
+  const steps=[...$("#stepList").children].map(r=>r.querySelector("textarea").value.trim()).filter(Boolean).map(b=>({body:toToken(b)}));
+  const tools=$("#fTools").value.split(/[、,]/).map(s=>s.trim()).filter(Boolean);
+  const cautions=$("#fCaution").value.split(/[／\/]/).map(s=>s.trim()).filter(Boolean).map(toToken);
+  const rec={name,cat:$("#fCat").value,place:$("#fPlace").value.trim(),time:$("#fTime").value.trim(),photo:formPhoto,tools,cautions,steps,log:[]};
+  if(editingId){const d=items.find(x=>x.id===editingId);rec.log=d.log||[];Object.assign(d,rec);rec.id=editingId}
+  else{rec.id=nextId++;items.unshift(rec)}
+  show("list");renderGrid();openDetail(editingId||rec.id);toast("保存しました");
+}
+
+/* Wake Lock */
+let wl=null;
+$("#wakeBtn").addEventListener("click",async()=>{
+  const btn=$("#wakeBtn");
+  if(wl){try{await wl.release()}catch(e){}wl=null;btn.classList.remove("on");$("#wakeTxt").textContent="画面オフ防止";return}
+  try{wl=await navigator.wakeLock.request("screen");btn.classList.add("on");$("#wakeTxt").textContent="画面オン維持中";
+    wl.addEventListener("release",()=>{btn.classList.remove("on");$("#wakeTxt").textContent="画面オフ防止";wl=null})}
+  catch(e){btn.classList.add("on");$("#wakeTxt").textContent="維持中(模擬)"}
+});
+
+$("#q").addEventListener("input",renderGrid);
+renderChips();renderGrid();
+</script>
