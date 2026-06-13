@@ -173,6 +173,17 @@
   .switch .knob{position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.16s}
   .set-toggle.on .switch{background:var(--indigo);border-color:var(--indigo)}
   .set-toggle.on .switch .knob{left:22px}
+  /* タブの管理／フォームのカテゴリ追加 */
+  .cat-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line)}
+  .cat-row:last-of-type{border-bottom:none}
+  .cat-row .cat-name{flex:1;font-weight:700;font-size:15px}
+  .cat-row .cat-fixed{flex:none;font-size:11px;color:var(--faint)}
+  .cat-del{flex:none;color:#C0392B;font-weight:700;font-size:13px;padding:7px 12px;border:1.5px solid #E6C3BD;border-radius:9px;background:var(--card)}
+  .cat-del:active{transform:translateY(1px)}
+  .cat-add-toggle{font-size:13px;font-weight:700;color:var(--indigo);padding:8px 2px;margin-top:8px}
+  .cat-add-row{display:flex;gap:8px;margin-top:12px}
+  .cat-add-row input{flex:1;font-family:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;outline:none}
+  .cat-add-row input:focus{border-color:var(--indigo)}
 
   /* 汎用確認モーダル */
   body.noscroll{overflow:hidden}
@@ -350,7 +361,12 @@
         <div class="row2">
           <div class="field"><label>タイトル</label><input type="text" id="fName" placeholder="例：カレーの作り方"></div>
           <div class="field"><label>カテゴリ</label>
-            <select id="fCat"><option>料理</option><option>掃除</option><option>家事</option><option>園芸・盆栽</option><option>ものづくり</option><option>その他</option></select>
+            <select id="fCat"></select>
+            <button type="button" class="cat-add-toggle" id="catAddToggle">＋ タブを追加</button>
+            <div class="cat-add-row hide" id="catAddRow">
+              <input type="text" id="catNewName" placeholder="新しいタブ名" maxlength="20">
+              <button type="button" class="dz-btn" id="catAddBtn">追加</button>
+            </div>
           </div>
         </div>
         <div class="row2">
@@ -411,6 +427,16 @@
           </div>
           <input type="file" id="importFile" accept="application/json,.json" style="display:none">
           <p class="set-backup-status" id="backupStatus"></p>
+        </div>
+
+        <div class="set-sec">
+          <div class="set-sec-h">タブの管理</div>
+          <p class="set-note">手順の分類タブを追加・削除できます。「その他」は付け替え先のため削除できません。</p>
+          <div id="catList"></div>
+          <div class="cat-add-row" id="catAddRow2">
+            <input type="text" id="catNewName2" placeholder="新しいタブ名" maxlength="20">
+            <button type="button" class="dz-btn" id="catAddBtn2">追加</button>
+          </div>
         </div>
       </div>
     </section>
@@ -486,8 +512,10 @@ const SAMPLE = [
 let items = [];
 let activeCat="すべて", editingId=null, formPhoto=null, tier="free";
 let _lastBackupAt=null, _hintSeen=false, wakeOn=false;   // 設定/バックアップ状態（meta連動・ランタイムキャッシュ）
-const cats=["すべて","料理","掃除","家事","園芸・盆栽","ものづくり","その他"];
+const CATS_DEFAULT=["料理","掃除","家事","園芸・盆栽","ものづくり","その他"];
+let cats=[...CATS_DEFAULT];        // 実カテゴリ（順序付き）。「すべて」は実体でなくUIフィルタなので含めない
 const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 
 /* ===== IndexedDB 永続化層 ===== */
 const DB_NAME="tejun-cho-db", DB_VER=1;
@@ -617,8 +645,12 @@ function showConfirm({title="確認",body="",okLabel="OK",danger=false}={}){
 }
 
 /* 一覧 */
-function renderChips(){$("#chips").innerHTML=cats.map(c=>`<button class="chip ${c===activeCat?'sel':''}" type="button" onclick="setCat('${c}')">${c}</button>`).join("")}
+function renderChips(){
+  const all=["すべて",...cats];
+  $("#chips").innerHTML=all.map(c=>`<button class="chip ${c===activeCat?'sel':''}" type="button" data-cat="${esc(c)}">${esc(c)}</button>`).join("");
+}
 function setCat(c){activeCat=c;renderChips();renderGrid()}
+$("#chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(b)setCat(b.dataset.cat)});
 function renderGrid(){
   renderReminder();
   const q=$("#q").value.trim();
@@ -804,6 +836,7 @@ function renderSettings(){
   const bs=$("#backupStatus");
   if(bs) bs.textContent=_lastBackupAt?`前回バックアップ：${daysSince(_lastBackupAt)}日前（${_lastBackupAt.slice(0,10)}）`:"まだ書き出していません";
   updateWakeToggleUI();
+  renderCatManager();
 }
 
 /* 画面を常にオン（Wake Lock）。トグルON中はタブ復帰で取り直し（best-effort）。
@@ -822,6 +855,49 @@ async function setWake(on){
   if(on){ await acquireWake(); }
   else{ if(wl){try{await wl.release()}catch(e){}} wl=null; }
   updateWakeToggleUI();
+}
+
+/* ===== カスタムタブ（カテゴリ）の追加・削除・管理 ===== */
+function populateCatSelect(selected){
+  const opts=[...cats];
+  if(selected && !opts.includes(selected)) opts.unshift(selected);  // 既存itemの未知カテゴリも失わない
+  $("#fCat").innerHTML=opts.map(c=>`<option value="${esc(c)}"${c===selected?" selected":""}>${esc(c)}</option>`).join("");
+}
+async function addCategory(name){
+  name=(name||"").trim();
+  if(!name){ toast("タブ名を入力してください"); return false; }
+  if(name==="すべて"){ toast("その名前は使えません"); return false; }
+  if(cats.includes(name)){ toast("同じ名前のタブがあります"); return false; }
+  cats.push(name);
+  try{ await metaSet("cats",cats); }catch(e){ cats.pop(); toast("追加に失敗しました"); return false; }
+  renderChips();
+  return true;
+}
+async function deleteCategory(name){
+  if(name==="その他"){ return; }                                   // 付け替え先は固定
+  const used=items.filter(d=>d.cat===name);
+  const ok=await showConfirm({
+    title:"タブを削除",
+    body:`${used.length}件が『${name}』を使っています。\n削除すると、それらは『その他』に移ります。手順自体は消えません。`,
+    okLabel:"削除する", danger:true
+  });
+  if(!ok) return;
+  if(!cats.includes("その他")) cats.push("その他");                  // 付け替え先の存在保証
+  try{
+    for(const d of used){ d.cat="その他"; d.updatedAt=new Date().toISOString(); await itemPut(d); }
+    cats=cats.filter(c=>c!==name);
+    await metaSet("cats",cats);
+  }catch(e){ toast("削除に失敗しました"); return; }
+  if(activeCat===name) activeCat="すべて";
+  renderChips(); renderGrid(); renderCatManager();
+  toast(used.length?`『${name}』を削除し${used.length}件を『その他』に移しました`:`『${name}』を削除しました`);
+}
+function renderCatManager(){
+  const el=$("#catList"); if(!el)return;
+  el.innerHTML=cats.map(c=>
+    `<div class="cat-row" data-cat="${esc(c)}"><span class="cat-name">${esc(c)}</span>`+
+    (c==="その他"?`<span class="cat-fixed">削除不可</span>`:`<button class="cat-del" type="button">削除</button>`)+
+    `</div>`).join("");
 }
 
 /* ===== カードの並べ替え（1Dリスト・ステップのドラッグ部品を再利用） ===== */
@@ -937,15 +1013,16 @@ function openForm(id){ renderForm(id); history.pushState({v:"form",id:id||null},
 function renderForm(id){ // 履歴を触らずにフォームを描画
   editingId=id||null; $("#formTitle").textContent=id?"手順を編集":"手順を登録";
   $("#stepList").innerHTML=""; formPhoto=null; resetDrop();
+  $("#catAddRow").classList.add("hide"); $("#catNewName").value="";   // 新規追加行は毎回畳む
   if(id){
     const d=items.find(x=>x.id===id);
-    $("#fName").value=d.name;$("#fCat").value=d.cat;$("#fPlace").value=d.place||"";$("#fTime").value=d.time||"";
+    $("#fName").value=d.name;populateCatSelect(d.cat);$("#fPlace").value=d.place||"";$("#fTime").value=d.time||"";
     $("#fTools").value=(d.tools||[]).join("、");
     $("#fCaution").value=(d.cautions||[]).join("／").replace(/\{|\}/g,"");
     d.steps.forEach(s=>addStepRow(s.body));
     if(d.photo){formPhoto=d.photo;fillDrop(d.photo)}
   }else{
-    $("#fName").value="";$("#fCat").value="料理";$("#fPlace").value="";$("#fTime").value="";
+    $("#fName").value="";populateCatSelect(cats[0]||"その他");$("#fPlace").value="";$("#fTime").value="";
     $("#fTools").value="";$("#fCaution").value=""; addStepRow();addStepRow();
   }
   // 削除は編集時のみ。新規登録時は対象がないので隠す
@@ -1083,6 +1160,19 @@ makeReorderable($("#reorderList"),{handleSelector:".grip",itemSelector:".reorder
 $("#btnReorder").addEventListener("click",openReorder);
 $("#btnReorderDone").addEventListener("click",saveReorder);
 
+/* カスタムタブ：フォーム内インライン追加 */
+$("#catAddToggle").addEventListener("click",()=>{ $("#catAddRow").classList.toggle("hide"); $("#catNewName").focus(); });
+$("#catAddBtn").addEventListener("click",async()=>{
+  const name=$("#catNewName").value;
+  if(await addCategory(name)){ populateCatSelect(name); $("#catNewName").value=""; $("#catAddRow").classList.add("hide"); }
+});
+/* 設定「タブの管理」：追加・削除 */
+$("#catAddBtn2").addEventListener("click",async()=>{
+  const name=$("#catNewName2").value;
+  if(await addCategory(name)){ $("#catNewName2").value=""; renderCatManager(); }
+});
+$("#catList").addEventListener("click",e=>{ const b=e.target.closest(".cat-del"); if(b) deleteCategory(b.closest(".cat-row").dataset.cat); });
+
 async function saveDish(){
   const name=$("#fName").value.trim();
   if(!name){$("#fName").focus();$("#fName").style.borderColor="var(--indigo)";toast("タイトルを入れてください");return}
@@ -1160,6 +1250,9 @@ async function boot(){
     items=(await itemsAll()).map(normalize); resortItems(); // ホームはorder昇順（欠落はcreatedAt/id）
     _lastBackupAt=(await metaGet("lastBackupAt"))||null;
     _hintSeen=!!(await metaGet("hintSeen"));
+    const savedCats=await metaGet("cats");                  // カスタムタブ（順序付き）。無ければ既定6種で初期化
+    if(Array.isArray(savedCats)&&savedCats.length) cats=savedCats;
+    else await metaSet("cats",cats);
   }catch(e){
     console.error("DB初期化に失敗:",e);
     toast("保存領域を開けませんでした（今回はメモリ動作）");
