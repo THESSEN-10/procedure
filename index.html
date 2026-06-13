@@ -895,9 +895,17 @@ async function deleteCategory(name){
 function renderCatManager(){
   const el=$("#catList"); if(!el)return;
   el.innerHTML=cats.map(c=>
-    `<div class="cat-row" data-cat="${esc(c)}"><span class="cat-name">${esc(c)}</span>`+
+    `<div class="cat-row" data-cat="${esc(c)}">`+
+    `<button class="grip" type="button" title="ドラッグして並べ替え" aria-label="並べ替え">⋮⋮</button>`+
+    `<span class="cat-name">${esc(c)}</span>`+
     (c==="その他"?`<span class="cat-fixed">削除不可</span>`:`<button class="cat-del" type="button">削除</button>`)+
     `</div>`).join("");
+}
+/* タブの並べ替え確定：DOM順をcatsへ反映してmetaに保存→チップに即反映 */
+async function saveCatOrder(){
+  cats=[...$("#catList").children].map(r=>r.dataset.cat);
+  try{ await metaSet("cats",cats); }catch(e){ toast("並び順の保存に失敗しました"); return; }
+  renderChips();   // フォームのselectは開くたびcats順で生成されるため自動反映
 }
 
 /* ===== カードの並べ替え（1Dリスト・ステップのドラッグ部品を再利用） ===== */
@@ -1159,6 +1167,9 @@ makeReorderable($("#stepList"),{handleSelector:".grip",itemSelector:".steprow",o
 makeReorderable($("#reorderList"),{handleSelector:".grip",itemSelector:".reorder-row",onReorder:()=>{}});
 $("#btnReorder").addEventListener("click",openReorder);
 $("#btnReorderDone").addEventListener("click",saveReorder);
+
+/* タブの並べ替え（同じドラッグ部品を再利用。ドロップ即保存→チップへ反映） */
+makeReorderable($("#catList"),{handleSelector:".grip",itemSelector:".cat-row",onReorder:saveCatOrder});
 
 /* カスタムタブ：フォーム内インライン追加 */
 $("#catAddToggle").addEventListener("click",()=>{ $("#catAddRow").classList.toggle("hide"); $("#catNewName").focus(); });
