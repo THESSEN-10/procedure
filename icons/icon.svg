@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- 手順帳 マスターアイコン（重なったステップカード）。色は paper/indigo。
+       PNGは tools/make-icons.js で生成（同じ幾何形状）。編集時はこのSVGとjsを揃えること。 -->
+  <rect width="512" height="512" rx="102" fill="#2C4A78"/>
+  <g>
+    <rect x="123" y="93"  width="219" height="328" rx="44" fill="#FFFFFF" opacity="0.55"/>
+    <rect x="153" y="93"  width="219" height="328" rx="44" fill="#FFFFFF" opacity="0.8"/>
+    <rect x="153" y="123" width="219" height="328" rx="44" fill="#FFFFFF"/>
+    <rect x="191" y="163" width="114" height="30" rx="14" fill="#2C4A78"/>
+    <rect x="191" y="233" width="136" height="16" rx="8"  fill="#1E365A"/>
+    <rect x="191" y="299" width="100" height="16" rx="8"  fill="#1E365A"/>
+  </g>
+</svg>
