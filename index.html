@@ -169,10 +169,19 @@
   .drop-del:active{transform:translateY(1px)}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .steprow{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
-  .steprow .sn{flex:none;width:30px;height:46px;display:flex;align-items:center;justify-content:center;font-family:"Roboto Mono",monospace;font-weight:700;color:var(--faint)}
+  .steprow .sn{flex:none;width:24px;height:46px;display:flex;align-items:center;justify-content:center;font-family:"Roboto Mono",monospace;font-weight:700;color:var(--faint)}
   .steprow textarea{flex:1;min-height:46px}
   .steprow .del{flex:none;color:var(--faint);font-size:20px;padding:8px;align-self:center}
   .addstep{font-size:14px;font-weight:700;color:var(--indigo);padding:8px 2px}
+
+  /* ドラッグ並べ替え（ハンドル限定） */
+  .grip{flex:none;align-self:center;width:26px;height:46px;display:flex;align-items:center;justify-content:center;
+    color:var(--faint);font-size:16px;line-height:1;letter-spacing:-2px;cursor:grab;touch-action:none;user-select:none}
+  .grip:active{cursor:grabbing}
+  .steprow.dragging{background:var(--card);box-shadow:0 12px 30px rgba(30,35,48,.22);border-radius:12px;
+    opacity:.97;padding:0 6px;border:1px solid var(--line)}
+  .reorder-indicator{height:3px;background:var(--indigo);border-radius:3px;margin:6px 0;box-shadow:0 0 0 2px var(--indigo-wash)}
+  body.reordering{user-select:none;-webkit-user-select:none}
   .formbar{display:flex;gap:12px;margin-top:26px}
   .save{flex:1;background:var(--indigo);color:#fff;font-weight:700;font-size:16px;padding:15px;border-radius:12px;box-shadow:0 2px 0 var(--indigo-deep)}
   .save:active{transform:translateY(1px);box-shadow:0 1px 0 var(--indigo-deep)}
@@ -782,11 +791,95 @@ function renderForm(id){ // 履歴を触らずにフォームを描画
 function addStepRow(val=""){
   const n=$("#stepList").children.length+1;
   const row=document.createElement("div");row.className="steprow";
-  row.innerHTML=`<div class="sn">${n}</div><textarea placeholder="手順を入力">${val.replace(/\{|\}/g,"")}</textarea><button class="del" type="button" title="削除">×</button>`;
+  row.innerHTML=`<button class="grip" type="button" title="ドラッグして並べ替え" aria-label="並べ替え">⋮⋮</button><div class="sn">${n}</div><textarea placeholder="手順を入力">${val.replace(/\{|\}/g,"")}</textarea><button class="del" type="button" title="削除">×</button>`;
   row.querySelector(".del").onclick=()=>{row.remove();renumber()};
   $("#stepList").appendChild(row);
 }
-function renumber(){[...$("#stepList").children].forEach((r,i)=>r.querySelector(".sn").textContent=i+1)}
+function renumber(){[...$("#stepList").querySelectorAll(".steprow .sn")].forEach((sn,i)=>sn.textContent=i+1)}
+
+/* ===== 汎用ドラッグ並べ替え（ハンドル限定・デッドゾーン・自動スクロール） =====
+   listEl 直下の itemSelector 要素を handleSelector からのドラッグで並べ替える。
+   pointer events で touch/マウス両対応・外部ライブラリなし。
+   DOMノードそのものを移動するため textarea等のライブ入力値は保持される。
+   onReorder(from,to) はドロップ後（DOM移動済み）に、順序が変わった時だけ呼ばれる。
+   ※後でホームカードの並べ替えにも再利用する想定。 */
+function makeReorderable(listEl,{handleSelector=".grip",itemSelector=".steprow",onReorder=()=>{},deadZone=9,edge=56,speed=14}={}){
+  let drag=null, indicator=null, raf=0, scrollDir=0, lastY=0;
+  const items=()=>[...listEl.children].filter(c=>c!==indicator&&c.matches(itemSelector));
+
+  function placeIndicator(clientY){
+    let ref=null;
+    for(const el of items()){
+      if(el===drag.item) continue;                 // 浮いている行は除外
+      const r=el.getBoundingClientRect();
+      if(clientY < r.top + r.height/2){ ref=el; break; }
+    }
+    listEl.insertBefore(indicator, ref);           // ref=null なら末尾へ
+  }
+  function lift(){
+    const r=drag.item.getBoundingClientRect();
+    drag.rect=r; drag.fromIndex=items().indexOf(drag.item);
+    const s=drag.item.style;
+    s.width=r.width+"px"; s.height=r.height+"px"; s.position="fixed";
+    s.left=r.left+"px"; s.top=r.top+"px"; s.zIndex="50"; s.pointerEvents="none";
+    drag.item.classList.add("dragging");
+    document.body.classList.add("reordering");
+    indicator=document.createElement("div"); indicator.className="reorder-indicator";
+    placeIndicator(drag.startY);
+    raf=requestAnimationFrame(loop);               // 自動スクロール用ループ
+  }
+  function update(clientY){
+    drag.item.style.top=(drag.rect.top + (clientY-drag.startY))+"px";
+    placeIndicator(clientY);
+  }
+  function loop(){
+    if(scrollDir!==0){ window.scrollBy(0,scrollDir*speed); update(lastY); }
+    raf=requestAnimationFrame(loop);
+  }
+  function onMove(e){
+    if(!drag) return;
+    if(!drag.started){
+      if(Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)<deadZone) return; // デッドゾーン
+      drag.started=true; lift();
+    }
+    e.preventDefault();
+    lastY=e.clientY; update(e.clientY);
+    const vh=window.innerHeight;
+    scrollDir = e.clientY<edge ? -1 : (e.clientY>vh-edge ? 1 : 0);
+  }
+  function onUp(){
+    if(!drag) return;
+    const h=drag.handle;
+    try{ h.releasePointerCapture(drag.pointerId); }catch(_){}
+    h.removeEventListener("pointermove",onMove);
+    h.removeEventListener("pointerup",onUp);
+    h.removeEventListener("pointercancel",onUp);
+    if(drag.started){
+      cancelAnimationFrame(raf); raf=0; scrollDir=0;
+      const item=drag.item, s=item.style;
+      ["width","height","position","left","top","zIndex","pointerEvents"].forEach(p=>s[p]="");
+      item.classList.remove("dragging");
+      document.body.classList.remove("reordering");
+      listEl.insertBefore(item, indicator);        // インジケータ位置に確定
+      indicator.remove(); indicator=null;
+      const to=items().indexOf(item);
+      if(to!==drag.fromIndex) onReorder(drag.fromIndex,to);
+    }
+    drag=null;
+  }
+  listEl.addEventListener("pointerdown",e=>{
+    if(!e.isPrimary || (e.button!=null && e.button!==0)) return;
+    const handle=e.target.closest(handleSelector);
+    if(!handle || !listEl.contains(handle)) return;
+    const item=handle.closest(itemSelector);
+    if(!item || item.parentElement!==listEl) return;
+    drag={handle,item,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,started:false,rect:null,fromIndex:-1};
+    handle.setPointerCapture(e.pointerId);
+    handle.addEventListener("pointermove",onMove);
+    handle.addEventListener("pointerup",onUp);
+    handle.addEventListener("pointercancel",onUp);
+  });
+}
 function resetDrop(){$("#drop").querySelector("img")?.remove();$("#dropIcon").style.display="";$("#dropTxt").textContent="タップして写真を選ぶ";$("#dropDel").classList.add("hide")}
 function fillDrop(src){resetDrop();const img=document.createElement("img");img.src=src;$("#drop").appendChild(img);$("#dropIcon").style.display="none";$("#dropTxt").textContent="";$("#dropDel").classList.remove("hide")}
 /* 写真：長辺〜1280pxに縮小しJPEG品質80%のbase64で保持（フル解像度は持たない／要件①） */
@@ -815,6 +908,9 @@ $("#dropDel").addEventListener("click",e=>{
   e.preventDefault(); e.stopPropagation();
   formPhoto=null; $("#photoInput").value=""; resetDrop();
 });
+
+/* 手順の並べ替え（DOMノード移動で入力値を保持→採番更新）。順序確定は保存時 */
+makeReorderable($("#stepList"),{handleSelector:".grip",itemSelector:".steprow",onReorder:renumber});
 
 async function saveDish(){
   const name=$("#fName").value.trim();
