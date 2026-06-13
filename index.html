@@ -182,6 +182,60 @@
     .row2{grid-template-columns:1fr}
     .brand .sub{display:none}
   }
+
+  /* 印刷ボタン（画面用。印刷時は隠す） */
+  .printrow{margin-top:14px;text-align:center}
+  .printbtn{font-size:14px;font-weight:700;color:var(--ink);padding:11px 18px;border:1.5px solid var(--line);border-radius:10px;background:var(--card)}
+  .printbtn:active{transform:translateY(1px)}
+
+  /* ===== 印刷／PDF：開いている手順を1枚にきれいに整形 ===== */
+  @media print{
+    @page{margin:14mm}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    body{background:#fff;color:#000;line-height:1.4}
+    .app{max-width:none;margin:0}
+    main{padding:0}
+
+    /* アプリUIを全部隠す（ヘッダ・戻る・各操作・検索・データゾーン・トースト・モーダル・印刷ボタン） */
+    header.bar,.toast,.modal-ov,#view-list,#view-form,
+    .back,.detail-head,.finish,.printrow,.steps-h .prog{display:none !important}
+
+    /* 写真：ページ幅に収め、高さを抑えて1ページに収まりやすく。未登録の枠は出さない */
+    .hero{display:block;margin:0 0 8mm}
+    .hero .photo{aspect-ratio:auto;border:none;background:none;box-shadow:none;border-radius:0;overflow:visible}
+    .hero .photo img{width:100%;height:auto;max-height:85mm;object-fit:contain;border:1px solid #999;border-radius:6px}
+    .hero .photo .stamp,.hero .photo .ph{display:none !important}
+
+    .titleblock h1{font-size:24pt;color:#000;margin-bottom:6px}
+    .titleblock .submeta{margin:6px 0 10px}
+    .tag{background:#fff !important;border:1px solid #777;color:#000 !important;font-weight:700}
+
+    /* 注意・コツ：白黒でも目立つよう枠で表現 */
+    .caution{background:#fff;border:1px solid #000;border-left:4px solid #000;break-inside:avoid;margin-bottom:8px}
+    .caution .lbl{color:#000}
+    .caution li::before{color:#000}
+
+    .tools{break-inside:avoid}
+    .tools .lbl{color:#000}
+    .toolchip{background:#fff;border:1px solid #777;color:#000}
+
+    .steps-h{margin:6mm 0 2mm}
+    .steps-h .k{color:#000}
+    .steps-h .rule{background:#000}
+
+    .step{break-inside:avoid;border-bottom:1px solid #bbb;padding:3mm 0;align-items:flex-start}
+    .step .n{color:#000}
+    .step .txt{color:#000 !important}
+    .step.done .txt{color:#000 !important}   /* 画面のチェック状態に関わらず紙では通常表示 */
+
+    /* 手書き用の空チェックボックス（□）。.check を四角い空欄に転用 */
+    .step .check{width:5mm;height:5mm;min-width:5mm;border:1.5px solid #000;border-radius:1px;
+      background:#fff !important;color:transparent !important;box-shadow:none;margin-top:1mm}
+
+    /* 数字チップ：背景に頼らず枠線＋太字で白黒でも数値が読める */
+    .qty{background:#fff !important;border:1.5px solid #000;box-shadow:none;color:#000 !important;padding:0 6px 1px}
+    .qty .num,.qty .unit{color:#000 !important}
+  }
 </style>
 
 <div class="app">
@@ -527,7 +581,8 @@ function paintDetail(d){
     <div class="finish">
       <button class="fbtn" type="button" onclick="markDone(${d.id})">✓ やった！記録する</button>
       <span class="log">${logHtml}</span>
-    </div>`;
+    </div>
+    <div class="printrow"><button class="printbtn" type="button" onclick="window.print()">🖨 印刷 / PDFで保存</button></div>`;
 }
 function toggleStep(i){
   viewState.checked[i]=!viewState.checked[i];
