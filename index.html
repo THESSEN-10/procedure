@@ -121,6 +121,15 @@
   .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);
     font-weight:700;font-size:14px;padding:13px 22px;border-radius:999px;opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.25)}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast-act{margin-left:14px;font-weight:700;color:#FFD479;font-size:14px;text-decoration:underline;cursor:pointer}
+
+  /* データ（バックアップ）ゾーン：一覧画面の最下部 */
+  .datazone{margin-top:40px;padding-top:20px;border-top:1px solid var(--line)}
+  .datazone-h{font-family:"Roboto Mono",monospace;font-size:11px;letter-spacing:.12em;color:var(--faint);text-transform:uppercase;margin-bottom:6px}
+  .datazone-note{font-size:12px;color:var(--faint);margin-bottom:12px;line-height:1.5}
+  .datazone-btns{display:flex;gap:10px;flex-wrap:wrap}
+  .dz-btn{font-size:14px;font-weight:700;color:var(--ink);padding:11px 16px;border:1.5px solid var(--line);border-radius:10px;background:var(--card)}
+  .dz-btn:active{transform:translateY(1px)}
 
   /* 汎用確認モーダル */
   body.noscroll{overflow:hidden}
@@ -192,6 +201,17 @@
       </div>
       <div class="chips" id="chips"></div>
       <div class="grid" id="grid"></div>
+
+      <!-- データ（バックアップ）。エクスポート/インポートは常に無料 -->
+      <div class="datazone">
+        <div class="datazone-h">データ（バックアップ）</div>
+        <p class="datazone-note">バックアップは無料。端末内のデータをファイルに保存・復元します。</p>
+        <div class="datazone-btns">
+          <button class="dz-btn" type="button" id="btnExportAll">全データを書き出す</button>
+          <button class="dz-btn" type="button" id="btnImport">ファイルから取り込む</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+      </div>
     </section>
 
     <!-- 詳細 -->
@@ -351,6 +371,14 @@ const metaGet=k=>req(store("meta","readonly").get(k)).then(r=>r?r.value:undefine
 const metaSet=(k,v)=>req(store("meta","readwrite").put({key:k,value:v}));
 const itemPut=o=>req(store("items","readwrite").put(o));
 const itemsAll=()=>req(store("items","readonly").getAll());
+/* 全置換を1トランザクションで原子的に（clear→put）。途中失敗で半壊しない */
+function replaceAllItems(list){
+  return new Promise((res,rej)=>{
+    const tx=_db.transaction("items","readwrite"), os=tx.objectStore("items");
+    os.clear(); list.forEach(o=>os.put(o));
+    tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error);
+  });
+}
 
 /* item を schema:1 の完全形へ正規化（欠損フィールドを補完） */
 function normalize(o){
@@ -384,7 +412,21 @@ function fmt(t){
   });
   return h;
 }
-function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800)}
+function toast(msg,opt){
+  const t=$("#toast");clearTimeout(t._t);
+  if(opt&&opt.actionLabel){                       // アクション付き（例：置き換え後の「元に戻す」）
+    t.textContent="";
+    const span=document.createElement("span");span.textContent=msg;
+    const btn=document.createElement("button");btn.type="button";btn.className="toast-act";btn.textContent=opt.actionLabel;
+    btn.onclick=()=>{t.classList.remove("show");clearTimeout(t._t);opt.action&&opt.action();};
+    t.append(span,btn);
+    t.classList.add("show");
+    t._t=setTimeout(()=>t.classList.remove("show"),opt.duration||9000);
+  }else{
+    t.textContent=msg;t.classList.add("show");
+    t._t=setTimeout(()=>t.classList.remove("show"),1800);
+  }
+}
 
 /* 汎用確認ダイアログ。Promise<boolean>を返す（OK=true／キャンセル=false）。
    背景タップ・Escでキャンセル、フォーカスをモーダル内に保持、表示中は背面スクロール抑止。 */
@@ -471,7 +513,7 @@ function paintDetail(d){
     ?`前回 <b>${d.log[d.log.length-1]}</b>・通算 <b>${d.log.length}</b>回`
     :`<span class="none">まだ記録なし</span>`;
   $("#detailBody").innerHTML=`
-    <div class="detail-head"><button class="edit-btn" type="button" onclick="duplicateItem(${d.id})">複製</button><button class="edit-btn" type="button" onclick="openForm(${d.id})">編集</button></div>
+    <div class="detail-head"><button class="edit-btn" type="button" onclick="exportItem(${d.id})">共有</button><button class="edit-btn" type="button" onclick="duplicateItem(${d.id})">複製</button><button class="edit-btn" type="button" onclick="openForm(${d.id})">編集</button></div>
     <div class="hero">
       <div class="photo">${photo}</div>
       <div class="titleblock">
@@ -536,6 +578,122 @@ async function deleteItem(id){
   show("list"); renderGrid();
   history.replaceState({v:"list"},"");   // 編集履歴を一覧に置換（戻るで削除済み詳細に戻らない）
   toast("削除しました");
+}
+
+/* ===== エクスポート / インポート / 共有 ===== */
+function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
+function safeName(s){return (s||"").replace(/[\\/:*?"<>|\s]+/g,"_").replace(/^_+|_+$/g,"").slice(0,40)||"tejun";}
+
+/* 封筒を組み立て（tier/seeded/lastIdは含めない）。kind=full|item */
+function buildEnvelope(kind,list){
+  return JSON.stringify({app:"tejun-cho",schema:1,kind,exportedAt:new Date().toISOString(),items:list});
+}
+
+/* Web Shareでファイル共有。canShareで機能検出→非対応はダウンロードにフォールバック */
+async function shareOrDownload(json,filename){
+  const file=new File([json],filename,{type:"application/json"});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file],title:filename}); return; }
+    catch(e){ if(e.name==="AbortError") return; }   // 共有シートのキャンセルは無視。それ以外はDLへ
+  }
+  const blob=new Blob([json],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+async function exportAll(){
+  if(!items.length){toast("書き出すデータがありません");return}
+  await shareOrDownload(buildEnvelope("full",items),`tejun-cho-backup-${ymd(new Date())}.json`);
+}
+async function exportItem(id){
+  const it=items.find(x=>x.id===id); if(!it)return;
+  await shareOrDownload(buildEnvelope("item",[it]),`tejun-cho-${safeName(it.name)}.json`);
+}
+
+/* 取り込み：検証→kindでルーティング（full=全置換／それ以外=追加） */
+async function handleImport(text){
+  let env;
+  try{ env=JSON.parse(text); }catch(e){ toast("ファイルを読み取れませんでした"); return; }
+  if(!env||typeof env!=="object"||env.app!=="tejun-cho"||!Array.isArray(env.items)){ toast("対応していないファイルです"); return; }
+  if(typeof env.schema!=="number"||env.schema>1){ toast("新しいバージョンで作られたファイルです"); return; }
+  for(const it of env.items){   // 全件検証。1件でも不正なら無変更で弾く
+    if(!it||typeof it!=="object"||typeof it.name!=="string"||!it.name.trim()||!Array.isArray(it.steps)){
+      toast("ファイルの中身が不正です"); return;
+    }
+  }
+  if(!env.items.length){ toast("取り込む手順がありません"); return; }
+  if(env.kind==="full") await importReplaceAll(env.items);   // 明示的fullのみ全置換
+  else await importAdd(env.items);                           // 不明・欠落kindは安全側＝追加
+}
+
+/* 取り込んだ生itemを安全な完全形へ（配列/オブジェクトはクローン、写真は妥当でなければnull） */
+function sanitizeItem(it,extra){
+  return normalize({
+    ...it,
+    tools:Array.isArray(it.tools)?[...it.tools]:[],
+    cautions:Array.isArray(it.cautions)?[...it.cautions]:[],
+    steps:it.steps.map(s=>({body:String(s&&s.body!=null?s.body:"")})),
+    extra:(it.extra&&typeof it.extra==="object")?{...it.extra}:{},
+    photo:(typeof it.photo==="string"&&it.photo.startsWith("data:image"))?it.photo:null,
+    ...extra
+  });
+}
+
+/* 追加：相手のidは信用せず新id採番。logは引き継がず空、作成日時は取り込み日時 */
+async function importAdd(list){
+  let lastNid=null;
+  for(const it of list){
+    const nid=await nextId();
+    const rec=sanitizeItem(it,{id:nid,log:[],createdAt:undefined,updatedAt:undefined});
+    items.unshift(rec);
+    try{ await itemPut(rec); }catch(e){ toast("取り込みに失敗しました"); return; }
+    lastNid=nid;
+  }
+  renderGrid();
+  if(list.length===1){ openDetail(lastNid); }   // 1件なら詳細を開く
+  else{ show("list"); history.replaceState({v:"list"},""); }
+  toast(`${list.length}件を取り込みました`);
+}
+
+/* 全置換：復元なので原本のidを尊重（健全でなければ振り直し）。置換前に内部スナップショット退避→即時undo */
+async function importReplaceAll(list){
+  const incoming=list.map(it=>sanitizeItem(it));
+  const ids=incoming.map(x=>x.id);
+  if(!ids.every(Number.isInteger)||new Set(ids).size!==ids.length){  // 欠落/重複idは1..nに振り直し
+    let k=0; incoming.forEach(x=>{x.id=++k;});
+  }
+  const newLastId=incoming.reduce((m,x)=>Math.max(m,x.id),0);
+  const snapshot={items:items.map(x=>({...x})),lastId:_lastId,at:new Date().toISOString()};
+  const ok=await showConfirm({
+    title:"全データを置き換え",
+    body:`ファイルの内容で全て置き換えます。\n今ある${items.length}件は消え、${incoming.length}件になります。\n置き換え後に「元に戻す」で戻せます。`,
+    okLabel:"置き換える", danger:true
+  });
+  if(!ok)return;
+  try{
+    await metaSet("lastReplaceBackup",snapshot);  // 静かに内部退避（ファイルは作らない）
+    await replaceAllItems(incoming);
+    await metaSet("lastId",newLastId); _lastId=newLastId;
+  }catch(e){ toast("置き換えに失敗しました"); return; }
+  items=incoming.slice().sort((a,b)=>b.id-a.id);
+  renderGrid(); show("list"); history.replaceState({v:"list"},"");
+  toast("置き換えました",{actionLabel:"元に戻す",action:undoReplace});
+}
+
+/* 直前の全置換を即時undo（itemsもlastIdも元に戻す） */
+async function undoReplace(){
+  const snap=await metaGet("lastReplaceBackup");
+  if(!snap||!Array.isArray(snap.items)){ toast("元に戻せる内容がありません"); return; }
+  try{
+    await replaceAllItems(snap.items);
+    await metaSet("lastId",snap.lastId||0); _lastId=snap.lastId||0;
+    await metaSet("lastReplaceBackup",null);     // 使い切り
+  }catch(e){ toast("復元に失敗しました"); return; }
+  items=snap.items.slice().sort((a,b)=>b.id-a.id);
+  renderGrid(); show("list"); history.replaceState({v:"list"},"");
+  toast("元に戻しました");
 }
 
 /* フォーム */
@@ -629,6 +787,16 @@ $("#wakeBtn").addEventListener("click",async()=>{
 });
 
 $("#q").addEventListener("input",renderGrid);
+
+/* データゾーン：書き出し／取り込み */
+$("#btnExportAll").addEventListener("click",exportAll);
+$("#btnImport").addEventListener("click",()=>$("#importFile").click());
+$("#importFile").addEventListener("change",async e=>{
+  const f=e.target.files[0]; e.target.value="";   // 同じファイルを再選択できるようリセット
+  if(!f)return;
+  let text; try{ text=await f.text(); }catch(err){ toast("ファイルを読み取れませんでした"); return; }
+  await handleImport(text);
+});
 
 /* 戻る/進む（マウスの戻るボタン含む）で画面遷移。履歴stateが画面の真実 */
 window.addEventListener("popstate",e=>{
