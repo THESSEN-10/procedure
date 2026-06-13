@@ -128,6 +128,16 @@
   .dz-btn{font-size:14px;font-weight:700;color:var(--ink);padding:11px 16px;border:1.5px solid var(--line);border-radius:10px;background:var(--card)}
   .dz-btn:active{transform:translateY(1px)}
 
+  /* 並べ替え入口（控えめ）＋並べ替え画面 */
+  .subbar{display:flex;justify-content:flex-end;margin:-6px 0 12px}
+  .link-btn{font-size:13px;font-weight:700;color:var(--ink-soft);padding:7px 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--card)}
+  .link-btn:active{transform:translateY(1px)}
+  .reorder-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .reorder-row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:8px;box-shadow:var(--shadow)}
+  .reorder-row.dragging{box-shadow:0 12px 30px rgba(30,35,48,.22);opacity:.97}
+  .reorder-row .rr-name{flex:1;font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .reorder-row .rr-cat{flex:none;font-family:"Roboto Mono",monospace;font-size:11px;font-weight:700;color:var(--ink-soft);background:var(--paper-2);padding:3px 8px;border-radius:6px}
+
   /* 設定への入口（歯車）＋初回ヒント */
   .gear{display:flex;align-items:center;gap:7px;font-size:18px;line-height:1;padding:8px 12px;border:1.5px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink)}
   .gear .gear-txt{font-size:13px;font-weight:700}
@@ -163,6 +173,17 @@
   .switch .knob{position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.16s}
   .set-toggle.on .switch{background:var(--indigo);border-color:var(--indigo)}
   .set-toggle.on .switch .knob{left:22px}
+  /* タブの管理／フォームのカテゴリ追加 */
+  .cat-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line)}
+  .cat-row:last-of-type{border-bottom:none}
+  .cat-row .cat-name{flex:1;font-weight:700;font-size:15px}
+  .cat-row .cat-fixed{flex:none;font-size:11px;color:var(--faint)}
+  .cat-del{flex:none;color:#C0392B;font-weight:700;font-size:13px;padding:7px 12px;border:1.5px solid #E6C3BD;border-radius:9px;background:var(--card)}
+  .cat-del:active{transform:translateY(1px)}
+  .cat-add-toggle{font-size:13px;font-weight:700;color:var(--indigo);padding:8px 2px;margin-top:8px}
+  .cat-add-row{display:flex;gap:8px;margin-top:12px}
+  .cat-add-row input{flex:1;font-family:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;outline:none}
+  .cat-add-row input:focus{border-color:var(--indigo)}
 
   /* 汎用確認モーダル */
   body.noscroll{overflow:hidden}
@@ -241,7 +262,7 @@
     main{padding:0}
 
     /* アプリUIを全部隠す（ヘッダ・戻る・各操作・検索・データゾーン・トースト・モーダル・印刷ボタン） */
-    header.bar,.toast,.modal-ov,#view-list,#view-form,#view-settings,
+    header.bar,.toast,.modal-ov,#view-list,#view-form,#view-settings,#view-reorder,
     .back,.detail-head,.finish,.printrow,.steps-h .prog{display:none !important}
 
     /* 写真：ページ幅に収め、高さを抑えて1ページに収まりやすく。未登録の枠は出さない */
@@ -299,7 +320,18 @@
         <button class="add" type="button" onclick="openForm()">＋ 新しい手順</button>
       </div>
       <div class="chips" id="chips"></div>
+      <div class="subbar"><button class="link-btn" type="button" id="btnReorder">≡ 並べ替え</button></div>
       <div class="grid" id="grid"></div>
+    </section>
+
+    <!-- 並べ替え（1Dリスト） -->
+    <section id="view-reorder" class="hide">
+      <button class="back" type="button" onclick="history.back()">‹ 保存せず戻る</button>
+      <div class="setwrap">
+        <div class="reorder-head"><h1 class="set-title" style="margin:0">並べ替え</h1><button class="edit-btn primary" type="button" id="btnReorderDone">完了</button></div>
+        <p class="hint" style="margin:6px 0 14px">ハンドル（≡）をつかんで上下にドラッグ。「完了」で保存します。</p>
+        <div id="reorderList"></div>
+      </div>
     </section>
 
     <!-- 詳細 -->
@@ -329,7 +361,12 @@
         <div class="row2">
           <div class="field"><label>タイトル</label><input type="text" id="fName" placeholder="例：カレーの作り方"></div>
           <div class="field"><label>カテゴリ</label>
-            <select id="fCat"><option>料理</option><option>掃除</option><option>家事</option><option>園芸・盆栽</option><option>ものづくり</option><option>その他</option></select>
+            <select id="fCat"></select>
+            <button type="button" class="cat-add-toggle" id="catAddToggle">＋ タブを追加</button>
+            <div class="cat-add-row hide" id="catAddRow">
+              <input type="text" id="catNewName" placeholder="新しいタブ名" maxlength="20">
+              <button type="button" class="dz-btn" id="catAddBtn">追加</button>
+            </div>
           </div>
         </div>
         <div class="row2">
@@ -390,6 +427,16 @@
           </div>
           <input type="file" id="importFile" accept="application/json,.json" style="display:none">
           <p class="set-backup-status" id="backupStatus"></p>
+        </div>
+
+        <div class="set-sec">
+          <div class="set-sec-h">タブの管理</div>
+          <p class="set-note">手順の分類タブを追加・削除できます。「その他」は付け替え先のため削除できません。</p>
+          <div id="catList"></div>
+          <div class="cat-add-row" id="catAddRow2">
+            <input type="text" id="catNewName2" placeholder="新しいタブ名" maxlength="20">
+            <button type="button" class="dz-btn" id="catAddBtn2">追加</button>
+          </div>
         </div>
       </div>
     </section>
@@ -465,8 +512,10 @@ const SAMPLE = [
 let items = [];
 let activeCat="すべて", editingId=null, formPhoto=null, tier="free";
 let _lastBackupAt=null, _hintSeen=false, wakeOn=false;   // 設定/バックアップ状態（meta連動・ランタイムキャッシュ）
-const cats=["すべて","料理","掃除","家事","園芸・盆栽","ものづくり","その他"];
+const CATS_DEFAULT=["料理","掃除","家事","園芸・盆栽","ものづくり","その他"];
+let cats=[...CATS_DEFAULT];        // 実カテゴリ（順序付き）。「すべて」は実体でなくUIフィルタなので含めない
 const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 
 /* ===== IndexedDB 永続化層 ===== */
 const DB_NAME="tejun-cho-db", DB_VER=1;
@@ -507,9 +556,16 @@ function normalize(o){
     tools:o.tools||[], cautions:o.cautions||[], steps:o.steps||[],
     log:o.log||[],
     createdAt:o.createdAt||now, updatedAt:o.updatedAt||now,
-    templateId:o.templateId??null, extra:o.extra||{}
+    templateId:o.templateId??null, extra:o.extra||{},
+    order:(typeof o.order==="number")?o.order:undefined   // 欠落時はeffOrderでcreatedAt/idにフォールバック
   };
 }
+
+/* 実効order：明示orderがあればそれ、無ければcreatedAt(msスケール)→idでフォールバック。
+   order採番もmsスケール基準なので、order有無が混在しても矛盾なく昇順ソートできる。 */
+function effOrder(it){ return (typeof it.order==="number")?it.order:(Date.parse(it.createdAt)||it.id); }
+function maxOrder(){ return items.length?Math.max(...items.map(effOrder)):0; }
+function resortItems(){ items.sort((a,b)=>effOrder(a)-effOrder(b)||a.id-b.id); }   // ホームはorder昇順
 
 /* tier フラグ層（課金UI・上限判定はまだ作らない。継ぎ目だけ） */
 function getTier(){return tier;}
@@ -518,7 +574,7 @@ async function setTier(t){tier=t;await metaSet("tier",t);}
 /* 単調増加カウンタ採番（一度使ったidは再利用しない＝将来のマージ衝突回避） */
 async function nextId(){_lastId++;await metaSet("lastId",_lastId);return _lastId;}
 
-function show(v){["list","detail","form","settings"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));window.scrollTo(0,0)}
+function show(v){["list","detail","form","settings","reorder"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));window.scrollTo(0,0)}
 
 function fmt(t){
   let h=t.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
@@ -589,8 +645,12 @@ function showConfirm({title="確認",body="",okLabel="OK",danger=false}={}){
 }
 
 /* 一覧 */
-function renderChips(){$("#chips").innerHTML=cats.map(c=>`<button class="chip ${c===activeCat?'sel':''}" type="button" onclick="setCat('${c}')">${c}</button>`).join("")}
+function renderChips(){
+  const all=["すべて",...cats];
+  $("#chips").innerHTML=all.map(c=>`<button class="chip ${c===activeCat?'sel':''}" type="button" data-cat="${esc(c)}">${esc(c)}</button>`).join("");
+}
 function setCat(c){activeCat=c;renderChips();renderGrid()}
+$("#chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(b)setCat(b.dataset.cat)});
 function renderGrid(){
   renderReminder();
   const q=$("#q").value.trim();
@@ -675,9 +735,10 @@ async function duplicateItem(id){
     ...src, id:nid, name:src.name+"のコピー",
     tools:[...(src.tools||[])], cautions:[...(src.cautions||[])],
     steps:(src.steps||[]).map(s=>({...s})), extra:{...(src.extra||{})},
-    log:[], createdAt:undefined, updatedAt:undefined   // normalizeで現在時刻が入る
+    log:[], createdAt:undefined, updatedAt:undefined,   // normalizeで現在時刻が入る
+    order:maxOrder()+1                                   // 複製は末尾へ
   });
-  items.unshift(copy);
+  items.push(copy); resortItems();
   try{ await itemPut(copy); }catch(e){ toast("複製に失敗しました"); return; }
   renderGrid(); openDetail(nid); toast("複製しました");
 }
@@ -775,6 +836,7 @@ function renderSettings(){
   const bs=$("#backupStatus");
   if(bs) bs.textContent=_lastBackupAt?`前回バックアップ：${daysSince(_lastBackupAt)}日前（${_lastBackupAt.slice(0,10)}）`:"まだ書き出していません";
   updateWakeToggleUI();
+  renderCatManager();
 }
 
 /* 画面を常にオン（Wake Lock）。トグルON中はタブ復帰で取り直し（best-effort）。
@@ -795,6 +857,81 @@ async function setWake(on){
   updateWakeToggleUI();
 }
 
+/* ===== カスタムタブ（カテゴリ）の追加・削除・管理 ===== */
+function populateCatSelect(selected){
+  const opts=[...cats];
+  if(selected && !opts.includes(selected)) opts.unshift(selected);  // 既存itemの未知カテゴリも失わない
+  $("#fCat").innerHTML=opts.map(c=>`<option value="${esc(c)}"${c===selected?" selected":""}>${esc(c)}</option>`).join("");
+}
+async function addCategory(name){
+  name=(name||"").trim();
+  if(!name){ toast("タブ名を入力してください"); return false; }
+  if(name==="すべて"){ toast("その名前は使えません"); return false; }
+  if(cats.includes(name)){ toast("同じ名前のタブがあります"); return false; }
+  cats.push(name);
+  try{ await metaSet("cats",cats); }catch(e){ cats.pop(); toast("追加に失敗しました"); return false; }
+  renderChips();
+  return true;
+}
+async function deleteCategory(name){
+  if(name==="その他"){ return; }                                   // 付け替え先は固定
+  const used=items.filter(d=>d.cat===name);
+  const ok=await showConfirm({
+    title:"タブを削除",
+    body:`${used.length}件が『${name}』を使っています。\n削除すると、それらは『その他』に移ります。手順自体は消えません。`,
+    okLabel:"削除する", danger:true
+  });
+  if(!ok) return;
+  if(!cats.includes("その他")) cats.push("その他");                  // 付け替え先の存在保証
+  try{
+    for(const d of used){ d.cat="その他"; d.updatedAt=new Date().toISOString(); await itemPut(d); }
+    cats=cats.filter(c=>c!==name);
+    await metaSet("cats",cats);
+  }catch(e){ toast("削除に失敗しました"); return; }
+  if(activeCat===name) activeCat="すべて";
+  renderChips(); renderGrid(); renderCatManager();
+  toast(used.length?`『${name}』を削除し${used.length}件を『その他』に移しました`:`『${name}』を削除しました`);
+}
+function renderCatManager(){
+  const el=$("#catList"); if(!el)return;
+  el.innerHTML=cats.map(c=>
+    `<div class="cat-row" data-cat="${esc(c)}">`+
+    `<button class="grip" type="button" title="ドラッグして並べ替え" aria-label="並べ替え">⋮⋮</button>`+
+    `<span class="cat-name">${esc(c)}</span>`+
+    (c==="その他"?`<span class="cat-fixed">削除不可</span>`:`<button class="cat-del" type="button">削除</button>`)+
+    `</div>`).join("");
+}
+/* タブの並べ替え確定：DOM順をcatsへ反映してmetaに保存→チップに即反映 */
+async function saveCatOrder(){
+  cats=[...$("#catList").children].map(r=>r.dataset.cat);
+  try{ await metaSet("cats",cats); }catch(e){ toast("並び順の保存に失敗しました"); return; }
+  renderChips();   // フォームのselectは開くたびcats順で生成されるため自動反映
+}
+
+/* ===== カードの並べ替え（1Dリスト・ステップのドラッグ部品を再利用） ===== */
+function openReorder(){ renderReorder(); history.pushState({v:"reorder"},""); }
+function renderReorder(){
+  // 現在のorder昇順で全手順を縦1列に。DOMが確定時の真実（完了でorder採番）
+  $("#reorderList").innerHTML=items.map(d=>
+    `<div class="reorder-row" data-id="${d.id}">`+
+      `<button class="grip" type="button" title="ドラッグして並べ替え" aria-label="並べ替え">⋮⋮</button>`+
+      `<span class="rr-name">${fmt(d.name)}</span><span class="rr-cat">${fmt(d.cat)}</span>`+
+    `</div>`).join("");
+  show("reorder");
+}
+async function saveReorder(){
+  // DOMの並び順にorderを振り直して永続化
+  const rows=[...$("#reorderList").children];
+  try{
+    for(let i=0;i<rows.length;i++){
+      const id=+rows[i].dataset.id, d=items.find(x=>x.id===id);
+      if(d && d.order!==i){ d.order=i; await itemPut(d); }   // 変更分のみ書き込み（order未設定も!==で対象）
+    }
+  }catch(e){ toast("並び順の保存に失敗しました"); return; }
+  resortItems(); renderGrid();
+  show("list"); history.replaceState({v:"list"},"");   // 完了後は戻るで並べ替えに戻らない
+  toast("並び順を保存しました");
+}
 /* 取り込み：検証→kindでルーティング（full=全置換／それ以外=追加） */
 async function handleImport(text){
   let env;
@@ -829,12 +966,12 @@ async function importAdd(list){
   let lastNid=null;
   for(const it of list){
     const nid=await nextId();
-    const rec=sanitizeItem(it,{id:nid,log:[],createdAt:undefined,updatedAt:undefined});
-    items.unshift(rec);
+    const rec=sanitizeItem(it,{id:nid,log:[],createdAt:undefined,updatedAt:undefined,order:maxOrder()+1}); // 末尾へ
+    items.push(rec);
     try{ await itemPut(rec); }catch(e){ toast("取り込みに失敗しました"); return; }
     lastNid=nid;
   }
-  renderGrid();
+  resortItems(); renderGrid();
   if(list.length===1){ openDetail(lastNid); }   // 1件なら詳細を開く
   else{ show("list"); history.replaceState({v:"list"},""); }
   toast(`${list.length}件を取り込みました`);
@@ -860,7 +997,7 @@ async function importReplaceAll(list){
     await replaceAllItems(incoming);
     await metaSet("lastId",newLastId); _lastId=newLastId;
   }catch(e){ toast("置き換えに失敗しました"); return; }
-  items=incoming.slice().sort((a,b)=>b.id-a.id);
+  items=incoming.slice(); resortItems();      // 復元データのorderを尊重して昇順
   renderGrid(); show("list"); history.replaceState({v:"list"},"");
   toast("置き換えました",{actionLabel:"元に戻す",action:undoReplace});
 }
@@ -874,7 +1011,7 @@ async function undoReplace(){
     await metaSet("lastId",snap.lastId||0); _lastId=snap.lastId||0;
     await metaSet("lastReplaceBackup",null);     // 使い切り
   }catch(e){ toast("復元に失敗しました"); return; }
-  items=snap.items.slice().sort((a,b)=>b.id-a.id);
+  items=snap.items.slice(); resortItems();
   renderGrid(); show("list"); history.replaceState({v:"list"},"");
   toast("元に戻しました");
 }
@@ -884,15 +1021,16 @@ function openForm(id){ renderForm(id); history.pushState({v:"form",id:id||null},
 function renderForm(id){ // 履歴を触らずにフォームを描画
   editingId=id||null; $("#formTitle").textContent=id?"手順を編集":"手順を登録";
   $("#stepList").innerHTML=""; formPhoto=null; resetDrop();
+  $("#catAddRow").classList.add("hide"); $("#catNewName").value="";   // 新規追加行は毎回畳む
   if(id){
     const d=items.find(x=>x.id===id);
-    $("#fName").value=d.name;$("#fCat").value=d.cat;$("#fPlace").value=d.place||"";$("#fTime").value=d.time||"";
+    $("#fName").value=d.name;populateCatSelect(d.cat);$("#fPlace").value=d.place||"";$("#fTime").value=d.time||"";
     $("#fTools").value=(d.tools||[]).join("、");
     $("#fCaution").value=(d.cautions||[]).join("／").replace(/\{|\}/g,"");
     d.steps.forEach(s=>addStepRow(s.body));
     if(d.photo){formPhoto=d.photo;fillDrop(d.photo)}
   }else{
-    $("#fName").value="";$("#fCat").value="料理";$("#fPlace").value="";$("#fTime").value="";
+    $("#fName").value="";populateCatSelect(cats[0]||"その他");$("#fPlace").value="";$("#fTime").value="";
     $("#fTools").value="";$("#fCaution").value=""; addStepRow();addStepRow();
   }
   // 削除は編集時のみ。新規登録時は対象がないので隠す
@@ -1025,6 +1163,27 @@ $("#dropDel").addEventListener("click",e=>{
 /* 手順の並べ替え（DOMノード移動で入力値を保持→採番更新）。順序確定は保存時 */
 makeReorderable($("#stepList"),{handleSelector:".grip",itemSelector:".steprow",onReorder:renumber});
 
+/* カードの並べ替え（同じドラッグ部品を再利用。DOM順が完了時の真実） */
+makeReorderable($("#reorderList"),{handleSelector:".grip",itemSelector:".reorder-row",onReorder:()=>{}});
+$("#btnReorder").addEventListener("click",openReorder);
+$("#btnReorderDone").addEventListener("click",saveReorder);
+
+/* タブの並べ替え（同じドラッグ部品を再利用。ドロップ即保存→チップへ反映） */
+makeReorderable($("#catList"),{handleSelector:".grip",itemSelector:".cat-row",onReorder:saveCatOrder});
+
+/* カスタムタブ：フォーム内インライン追加 */
+$("#catAddToggle").addEventListener("click",()=>{ $("#catAddRow").classList.toggle("hide"); $("#catNewName").focus(); });
+$("#catAddBtn").addEventListener("click",async()=>{
+  const name=$("#catNewName").value;
+  if(await addCategory(name)){ populateCatSelect(name); $("#catNewName").value=""; $("#catAddRow").classList.add("hide"); }
+});
+/* 設定「タブの管理」：追加・削除 */
+$("#catAddBtn2").addEventListener("click",async()=>{
+  const name=$("#catNewName2").value;
+  if(await addCategory(name)){ $("#catNewName2").value=""; renderCatManager(); }
+});
+$("#catList").addEventListener("click",e=>{ const b=e.target.closest(".cat-del"); if(b) deleteCategory(b.closest(".cat-row").dataset.cat); });
+
 async function saveDish(){
   const name=$("#fName").value.trim();
   if(!name){$("#fName").focus();$("#fName").style.borderColor="var(--indigo)";toast("タイトルを入れてください");return}
@@ -1040,8 +1199,8 @@ async function saveDish(){
     Object.assign(d,saved);
   }else{
     const id=await nextId();
-    saved=normalize({...base,id,log:[]});
-    items.unshift(saved);
+    saved=normalize({...base,id,log:[],order:maxOrder()+1});  // 新規は末尾へ
+    items.push(saved); resortItems();
   }
   try{ await itemPut(saved); }
   catch(e){ toast("保存に失敗しました"); return; }
@@ -1076,6 +1235,7 @@ window.addEventListener("popstate",e=>{
   if(s&&s.v==="detail") renderDetail(s.id);
   else if(s&&s.v==="form") renderForm(s.id);
   else if(s&&s.v==="settings"){ renderSettings(); show("settings"); }
+  else if(s&&s.v==="reorder"){ renderReorder(); }
   else show("list");
 });
 
@@ -1098,9 +1258,12 @@ async function boot(){
     }else{
       _lastId=(await metaGet("lastId"))||0;
     }
-    items=(await itemsAll()).map(normalize).sort((a,b)=>b.id-a.id); // 新しいものを上に
+    items=(await itemsAll()).map(normalize); resortItems(); // ホームはorder昇順（欠落はcreatedAt/id）
     _lastBackupAt=(await metaGet("lastBackupAt"))||null;
     _hintSeen=!!(await metaGet("hintSeen"));
+    const savedCats=await metaGet("cats");                  // カスタムタブ（順序付き）。無ければ既定6種で初期化
+    if(Array.isArray(savedCats)&&savedCats.length) cats=savedCats;
+    else await metaSet("cats",cats);
   }catch(e){
     console.error("DB初期化に失敗:",e);
     toast("保存領域を開けませんでした（今回はメモリ動作）");
