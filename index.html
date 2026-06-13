@@ -71,6 +71,8 @@
   .back{display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:14px;color:var(--ink-soft);padding:9px 4px;margin-bottom:6px}
   .detail-head{display:flex;justify-content:flex-end;gap:10px}
   .edit-btn{font-size:14px;font-weight:700;color:var(--ink);padding:10px 16px;border:1.5px solid var(--line);border-radius:10px;background:var(--card)}
+  .edit-btn.primary{background:var(--indigo);color:#fff;border-color:var(--indigo);box-shadow:0 2px 0 var(--indigo-deep)}
+  .edit-btn.primary:active{transform:translateY(1px);box-shadow:0 1px 0 var(--indigo-deep)}
   .hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:22px;align-items:start;margin-top:6px}
   .hero .photo{aspect-ratio:4/3;border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow);background:var(--paper-2);position:relative}
   .hero .photo img{width:100%;height:100%;object-fit:cover}
@@ -163,6 +165,8 @@
   .drop img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .drop .cam{font-size:30px;opacity:.55}
   .drop input{display:none}
+  .drop-del{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;background:rgba(30,35,48,.72);color:#fff;font-size:18px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;z-index:2;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+  .drop-del:active{transform:translateY(1px)}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .steprow{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
   .steprow .sn{flex:none;width:30px;height:46px;display:flex;align-items:center;justify-content:center;font-family:"Roboto Mono",monospace;font-weight:700;color:var(--faint)}
@@ -233,7 +237,9 @@
             <input type="file" id="photoInput" accept="image/*">
             <span class="cam" id="dropIcon">📷</span>
             <span id="dropTxt" style="font-family:'Roboto Mono',monospace;font-size:12px">タップして写真を選ぶ</span>
+            <button type="button" class="drop-del hide" id="dropDel" title="写真を削除" aria-label="写真を削除">×</button>
           </label>
+          <p class="hint">別の写真を選ぶと入れ替わります。×で写真なしに戻せます。</p>
         </div>
 
         <div class="row2">
@@ -513,7 +519,7 @@ function paintDetail(d){
     ?`前回 <b>${d.log[d.log.length-1]}</b>・通算 <b>${d.log.length}</b>回`
     :`<span class="none">まだ記録なし</span>`;
   $("#detailBody").innerHTML=`
-    <div class="detail-head"><button class="edit-btn" type="button" onclick="exportItem(${d.id})">共有</button><button class="edit-btn" type="button" onclick="duplicateItem(${d.id})">複製</button><button class="edit-btn" type="button" onclick="openForm(${d.id})">編集</button></div>
+    <div class="detail-head"><button class="edit-btn" type="button" onclick="exportItem(${d.id})">共有</button><button class="edit-btn" type="button" onclick="duplicateItem(${d.id})">複製</button><button class="edit-btn primary" type="button" onclick="openForm(${d.id})">編集</button></div>
     <div class="hero">
       <div class="photo">${photo}</div>
       <div class="titleblock">
@@ -726,8 +732,8 @@ function addStepRow(val=""){
   $("#stepList").appendChild(row);
 }
 function renumber(){[...$("#stepList").children].forEach((r,i)=>r.querySelector(".sn").textContent=i+1)}
-function resetDrop(){$("#drop").querySelector("img")?.remove();$("#dropIcon").style.display="";$("#dropTxt").textContent="タップして写真を選ぶ"}
-function fillDrop(src){resetDrop();const img=document.createElement("img");img.src=src;$("#drop").appendChild(img);$("#dropIcon").style.display="none";$("#dropTxt").textContent=""}
+function resetDrop(){$("#drop").querySelector("img")?.remove();$("#dropIcon").style.display="";$("#dropTxt").textContent="タップして写真を選ぶ";$("#dropDel").classList.add("hide")}
+function fillDrop(src){resetDrop();const img=document.createElement("img");img.src=src;$("#drop").appendChild(img);$("#dropIcon").style.display="none";$("#dropTxt").textContent="";$("#dropDel").classList.remove("hide")}
 /* 写真：長辺〜1280pxに縮小しJPEG品質80%のbase64で保持（フル解像度は持たない／要件①） */
 function resizeToDataURL(file,maxEdge=1280,quality=0.8){
   return new Promise((res,rej)=>{
@@ -748,6 +754,11 @@ $("#photoInput").addEventListener("change",async e=>{
   const f=e.target.files[0];if(!f)return;
   try{ formPhoto=await resizeToDataURL(f); fillDrop(formPhoto); }
   catch(err){ toast("画像を読み込めませんでした"); }
+});
+/* 写真を削除（labelのファイル選択を発火させないよう伝播停止）→ 写真なし状態へ */
+$("#dropDel").addEventListener("click",e=>{
+  e.preventDefault(); e.stopPropagation();
+  formPhoto=null; $("#photoInput").value=""; resetDrop();
 });
 
 async function saveDish(){
