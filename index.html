@@ -122,6 +122,25 @@
     font-weight:700;font-size:14px;padding:13px 22px;border-radius:999px;opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.25)}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+  /* 汎用確認モーダル */
+  body.noscroll{overflow:hidden}
+  .modal-ov{position:fixed;inset:0;z-index:60;background:rgba(30,35,48,.5);display:flex;align-items:center;justify-content:center;padding:20px}
+  .modal{background:var(--card);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-width:380px;width:100%;padding:22px 22px 18px}
+  .modal h2{font-size:18px;font-weight:900;margin-bottom:10px}
+  .modal p{font-size:15px;color:var(--ink-soft);line-height:1.55;white-space:pre-line;margin-bottom:20px}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end}
+  .modal-actions button{font-weight:700;font-size:15px;padding:11px 18px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink)}
+  .modal-actions .btn-cancel:focus{border-color:var(--indigo);outline:none;box-shadow:0 0 0 3px var(--indigo-wash)}
+  .modal-actions .btn-ok{border-color:var(--indigo);background:var(--indigo);color:#fff}
+  .modal-actions .btn-ok.btn-danger{border-color:#9E2B22;background:#C0392B}
+  .modal-actions .btn-ok:focus{outline:none;box-shadow:0 0 0 3px var(--indigo-wash)}
+  .modal-actions .btn-ok.btn-danger:focus{box-shadow:0 0 0 3px rgba(192,57,43,.28)}
+
+  /* 削除（編集画面下部の危険ゾーン） */
+  .danger-zone{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);text-align:center}
+  .btn-del-item{color:#C0392B;font-weight:700;font-size:14px;padding:10px 18px;border:1.5px solid #E6C3BD;border-radius:10px;background:var(--card)}
+  .btn-del-item:active{transform:translateY(1px)}
+
   /* form */
   .formwrap{max-width:680px;margin:0 auto}
   .field{margin-bottom:18px}
@@ -230,11 +249,28 @@
           <button class="save" type="button" onclick="saveDish()">保存する</button>
           <button class="cancel" type="button" onclick="history.back()">やめる</button>
         </div>
+
+        <!-- 削除は編集時のみ表示。主要導線から外し誤タップ防止 -->
+        <div class="danger-zone hide" id="dangerZone">
+          <button class="btn-del-item" type="button" id="delItemBtn">この手順を削除</button>
+        </div>
       </div>
     </section>
   </main>
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- 汎用確認ダイアログ（showConfirmで利用。Phase3のインポート上書き確認でも再利用） -->
+<div class="modal-ov hide" id="confirmOv">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
+    <h2 id="confirmTitle"></h2>
+    <p id="confirmBody"></p>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="confirmCancel" type="button">キャンセル</button>
+      <button class="btn-ok" id="confirmOk" type="button">OK</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ===== サンプル（初回のみ seed する種データ。schema/createdAt等は seed時に normalize で付与） ===== */
@@ -350,6 +386,48 @@ function fmt(t){
 }
 function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800)}
 
+/* 汎用確認ダイアログ。Promise<boolean>を返す（OK=true／キャンセル=false）。
+   背景タップ・Escでキャンセル、フォーカスをモーダル内に保持、表示中は背面スクロール抑止。 */
+function showConfirm({title="確認",body="",okLabel="OK",danger=false}={}){
+  return new Promise(resolve=>{
+    const ov=$("#confirmOv"), ok=$("#confirmOk"), cancel=$("#confirmCancel");
+    $("#confirmTitle").textContent=title;
+    $("#confirmBody").textContent=body;        // textContentでエスケープ。改行は white-space:pre-line で反映
+    ok.textContent=okLabel;
+    ok.classList.toggle("btn-danger",!!danger);
+    const prev=document.activeElement;
+    let done=false;
+    const focusables=[cancel,ok];
+    function close(result){
+      if(done)return; done=true;
+      ov.classList.add("hide");
+      document.body.classList.remove("noscroll");
+      ov.removeEventListener("mousedown",onOv);
+      document.removeEventListener("keydown",onKey,true);
+      ok.onclick=null; cancel.onclick=null;
+      if(prev&&prev.focus){try{prev.focus()}catch(e){}}
+      resolve(result);
+    }
+    function onOv(e){ if(e.target===ov) close(false); }   // 背景オーバーレイのタップ＝キャンセル
+    function onKey(e){
+      if(e.key==="Escape"){e.preventDefault();close(false);return;}
+      if(e.key==="Tab"){                                   // フォーカストラップ（2ボタン間を循環）
+        e.preventDefault();
+        const i=focusables.indexOf(document.activeElement);
+        const next=e.shiftKey?(i<=0?focusables.length-1:i-1):(i>=focusables.length-1?0:i+1);
+        focusables[next].focus();
+      }
+    }
+    ok.onclick=()=>close(true);
+    cancel.onclick=()=>close(false);
+    ov.addEventListener("mousedown",onOv);
+    document.addEventListener("keydown",onKey,true);
+    document.body.classList.add("noscroll");
+    ov.classList.remove("hide");
+    cancel.focus();                                        // 既定はキャンセル
+  });
+}
+
 /* 一覧 */
 function renderChips(){$("#chips").innerHTML=cats.map(c=>`<button class="chip ${c===activeCat?'sel':''}" type="button" onclick="setCat('${c}')">${c}</button>`).join("")}
 function setCat(c){activeCat=c;renderChips();renderGrid()}
@@ -393,7 +471,7 @@ function paintDetail(d){
     ?`前回 <b>${d.log[d.log.length-1]}</b>・通算 <b>${d.log.length}</b>回`
     :`<span class="none">まだ記録なし</span>`;
   $("#detailBody").innerHTML=`
-    <div class="detail-head"><button class="edit-btn" type="button" onclick="openForm(${d.id})">編集</button></div>
+    <div class="detail-head"><button class="edit-btn" type="button" onclick="duplicateItem(${d.id})">複製</button><button class="edit-btn" type="button" onclick="openForm(${d.id})">編集</button></div>
     <div class="hero">
       <div class="photo">${photo}</div>
       <div class="titleblock">
@@ -426,6 +504,40 @@ async function markDone(id){
   toast("お疲れさま！記録しました");
 }
 
+/* 複製（非破壊・確認なし）。新id採番、名前「○○のコピー」、logは空、作成日時は新規 */
+async function duplicateItem(id){
+  const src=items.find(x=>x.id===id);
+  if(!src)return;
+  const nid=await nextId();
+  const copy=normalize({
+    ...src, id:nid, name:src.name+"のコピー",
+    tools:[...(src.tools||[])], cautions:[...(src.cautions||[])],
+    steps:(src.steps||[]).map(s=>({...s})), extra:{...(src.extra||{})},
+    log:[], createdAt:undefined, updatedAt:undefined   // normalizeで現在時刻が入る
+  });
+  items.unshift(copy);
+  try{ await itemPut(copy); }catch(e){ toast("複製に失敗しました"); return; }
+  renderGrid(); openDetail(nid); toast("複製しました");
+}
+
+/* 削除（破壊的・確認必須）。確認OKでIndexedDB＋UIから削除し一覧へ。seededは触らない */
+async function deleteItem(id){
+  const d=items.find(x=>x.id===id);
+  if(!d)return;
+  const ok=await showConfirm({
+    title:"手順を削除",
+    body:`『${d.name}』を削除しますか？\n元に戻せません。`,
+    okLabel:"削除する", danger:true
+  });
+  if(!ok)return;
+  try{ await req(store("items","readwrite").delete(id)); }
+  catch(e){ toast("削除に失敗しました"); return; }
+  items=items.filter(x=>x.id!==id);
+  show("list"); renderGrid();
+  history.replaceState({v:"list"},"");   // 編集履歴を一覧に置換（戻るで削除済み詳細に戻らない）
+  toast("削除しました");
+}
+
 /* フォーム */
 function openForm(id){ renderForm(id); history.pushState({v:"form",id:id||null},""); } // 前進：履歴を積む
 function renderForm(id){ // 履歴を触らずにフォームを描画
@@ -442,6 +554,10 @@ function renderForm(id){ // 履歴を触らずにフォームを描画
     $("#fName").value="";$("#fCat").value="料理";$("#fPlace").value="";$("#fTime").value="";
     $("#fTools").value="";$("#fCaution").value=""; addStepRow();addStepRow();
   }
+  // 削除は編集時のみ。新規登録時は対象がないので隠す
+  const dz=$("#dangerZone");
+  if(editingId){ dz.classList.remove("hide"); $("#delItemBtn").onclick=()=>deleteItem(editingId); }
+  else{ dz.classList.add("hide"); $("#delItemBtn").onclick=null; }
   show("form");
 }
 function addStepRow(val=""){
