@@ -237,7 +237,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
-let items = [
+/* ===== サンプル（初回のみ seed する種データ。schema/createdAt等は seed時に normalize で付与） ===== */
+const SAMPLE = [
   {
     id:1, name:"シンパクの植え替え", cat:"園芸・盆栽", place:"ベランダ", time:30, photo:null,
     tools:["剣先スコップ","針金","赤玉土","桐生砂","鉢底ネット"],
@@ -288,9 +289,52 @@ let items = [
     log:[]
   },
 ];
-let nextId=6, activeCat="すべて", editingId=null, formPhoto=null;
+let items = [];
+let activeCat="すべて", editingId=null, formPhoto=null, tier="free";
 const cats=["すべて","料理","掃除","家事","園芸・盆栽","ものづくり","その他"];
 const $=s=>document.querySelector(s);
+
+/* ===== IndexedDB 永続化層 ===== */
+const DB_NAME="tejun-cho-db", DB_VER=1;
+let _db=null, _lastId=0;
+function openDB(){
+  return new Promise((res,rej)=>{
+    const rq=indexedDB.open(DB_NAME,DB_VER);
+    rq.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains("items")) db.createObjectStore("items",{keyPath:"id"});
+      if(!db.objectStoreNames.contains("meta"))  db.createObjectStore("meta",{keyPath:"key"});
+    };
+    rq.onsuccess=e=>res(e.target.result);
+    rq.onerror=e=>rej(e.target.error);
+  });
+}
+function store(name,mode){return _db.transaction(name,mode).objectStore(name);}
+function req(r){return new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+const metaGet=k=>req(store("meta","readonly").get(k)).then(r=>r?r.value:undefined);
+const metaSet=(k,v)=>req(store("meta","readwrite").put({key:k,value:v}));
+const itemPut=o=>req(store("items","readwrite").put(o));
+const itemsAll=()=>req(store("items","readonly").getAll());
+
+/* item を schema:1 の完全形へ正規化（欠損フィールドを補完） */
+function normalize(o){
+  const now=new Date().toISOString();
+  return {
+    id:o.id, schema:1, name:o.name, cat:o.cat,
+    place:o.place||"", time:o.time||"", photo:o.photo??null,
+    tools:o.tools||[], cautions:o.cautions||[], steps:o.steps||[],
+    log:o.log||[],
+    createdAt:o.createdAt||now, updatedAt:o.updatedAt||now,
+    templateId:o.templateId??null, extra:o.extra||{}
+  };
+}
+
+/* tier フラグ層（課金UI・上限判定はまだ作らない。継ぎ目だけ） */
+function getTier(){return tier;}
+async function setTier(t){tier=t;await metaSet("tier",t);}
+
+/* 単調増加カウンタ採番（一度使ったidは再利用しない＝将来のマージ衝突回避） */
+async function nextId(){_lastId++;await metaSet("lastId",_lastId);return _lastId;}
 
 function show(v){["list","detail","form"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));window.scrollTo(0,0)}
 
@@ -367,13 +411,15 @@ function toggleStep(i){
   const d=items.find(x=>x.id===viewState.id);
   paintDetail(d);
 }
-function markDone(id){
+async function markDone(id){
   const d=items.find(x=>x.id===id);
   const n=new Date();
   const today=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`;
   d.log=d.log||[]; d.log.push(today);
-  viewState.checked=new Array(d.steps.length).fill(false); // リセット
+  d.updatedAt=new Date().toISOString();
+  viewState.checked=new Array(d.steps.length).fill(false); // リセット（進捗は永続化しない）
   paintDetail(d); renderGrid();
+  try{ await itemPut(d); }catch(e){ toast("記録の保存に失敗しました"); return; }
   toast("お疲れさま！記録しました");
 }
 
@@ -404,19 +450,50 @@ function addStepRow(val=""){
 function renumber(){[...$("#stepList").children].forEach((r,i)=>r.querySelector(".sn").textContent=i+1)}
 function resetDrop(){$("#drop").querySelector("img")?.remove();$("#dropIcon").style.display="";$("#dropTxt").textContent="タップして写真を選ぶ"}
 function fillDrop(src){resetDrop();const img=document.createElement("img");img.src=src;$("#drop").appendChild(img);$("#dropIcon").style.display="none";$("#dropTxt").textContent=""}
-$("#photoInput").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;formPhoto=URL.createObjectURL(f);fillDrop(formPhoto)});
+/* 写真：長辺〜1280pxに縮小しJPEG品質80%のbase64で保持（フル解像度は持たない／要件①） */
+function resizeToDataURL(file,maxEdge=1280,quality=0.8){
+  return new Promise((res,rej)=>{
+    const url=URL.createObjectURL(file), img=new Image();
+    img.onload=()=>{
+      let w=img.naturalWidth,h=img.naturalHeight;
+      if(Math.max(w,h)>maxEdge){const r=maxEdge/Math.max(w,h);w=Math.round(w*r);h=Math.round(h*r);}
+      const c=document.createElement("canvas");c.width=w;c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      res(c.toDataURL("image/jpeg",quality));
+    };
+    img.onerror=err=>{URL.revokeObjectURL(url);rej(err);};
+    img.src=url;
+  });
+}
+$("#photoInput").addEventListener("change",async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{ formPhoto=await resizeToDataURL(f); fillDrop(formPhoto); }
+  catch(err){ toast("画像を読み込めませんでした"); }
+});
 
-function saveDish(){
+async function saveDish(){
   const name=$("#fName").value.trim();
   if(!name){$("#fName").focus();$("#fName").style.borderColor="var(--indigo)";toast("タイトルを入れてください");return}
   const toToken=t=>t.replace(/(大さじ\d+|小さじ\d+|\d+(?:\/\d+)?(?:\.\d+)?)/g,"{$1}");
   const steps=[...$("#stepList").children].map(r=>r.querySelector("textarea").value.trim()).filter(Boolean).map(b=>({body:toToken(b)}));
   const tools=$("#fTools").value.split(/[、,]/).map(s=>s.trim()).filter(Boolean);
   const cautions=$("#fCaution").value.split(/[／\/]/).map(s=>s.trim()).filter(Boolean).map(toToken);
-  const rec={name,cat:$("#fCat").value,place:$("#fPlace").value.trim(),time:$("#fTime").value.trim(),photo:formPhoto,tools,cautions,steps,log:[]};
-  if(editingId){const d=items.find(x=>x.id===editingId);rec.log=d.log||[];Object.assign(d,rec);rec.id=editingId}
-  else{rec.id=nextId++;items.unshift(rec)}
-  show("list");renderGrid();openDetail(editingId||rec.id);toast("保存しました");
+  const base={name,cat:$("#fCat").value,place:$("#fPlace").value.trim(),time:$("#fTime").value.trim(),photo:formPhoto,tools,cautions,steps};
+  let saved;
+  if(editingId){
+    const d=items.find(x=>x.id===editingId);
+    saved=normalize({...d,...base,log:d.log||[],updatedAt:new Date().toISOString()});
+    Object.assign(d,saved);
+  }else{
+    const id=await nextId();
+    saved=normalize({...base,id,log:[]});
+    items.unshift(saved);
+  }
+  try{ await itemPut(saved); }
+  catch(e){ toast("保存に失敗しました"); return; }
+  const goId=saved.id;
+  show("list");renderGrid();openDetail(goId);toast("保存しました");
 }
 
 /* Wake Lock */
@@ -430,5 +507,33 @@ $("#wakeBtn").addEventListener("click",async()=>{
 });
 
 $("#q").addEventListener("input",renderGrid);
-renderChips();renderGrid();
+
+/* ===== 起動 ===== */
+async function boot(){
+  // 保存領域の永続化を要求（非対応・拒否は握りつぶす／要件⑥）
+  try{ if(navigator.storage&&navigator.storage.persist) await navigator.storage.persist(); }catch(e){}
+  try{
+    _db=await openDB();
+    // tier フラグ層
+    const t=await metaGet("tier");
+    if(t===undefined){ tier="free"; await metaSet("tier","free"); } else tier=t;
+    // 初期投入は seeded フラグで判定（count===0不採用。全削除後にサンプルを復活させない）
+    const seeded=await metaGet("seeded");
+    if(!seeded){
+      for(const s of SAMPLE) await itemPut(normalize(s));
+      _lastId=Math.max(0,...SAMPLE.map(s=>s.id)); // サンプルは id 1〜4 → lastId=4 で初期化
+      await metaSet("lastId",_lastId);
+      await metaSet("seeded",true);
+    }else{
+      _lastId=(await metaGet("lastId"))||0;
+    }
+    items=(await itemsAll()).map(normalize).sort((a,b)=>b.id-a.id); // 新しいものを上に
+  }catch(e){
+    console.error("DB初期化に失敗:",e);
+    toast("保存領域を開けませんでした（今回はメモリ動作）");
+    items=SAMPLE.map(normalize); // フォールバック：メモリのみ
+  }
+  renderChips();renderGrid();
+}
+boot();
 </script>
