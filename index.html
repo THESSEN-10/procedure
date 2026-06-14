@@ -395,7 +395,7 @@
 
 <div class="app">
   <header class="bar">
-    <div class="brand"><span class="logo">手順<b>帳</b></span><span class="sub">STEP CARDS</span></div>
+    <button class="brand" type="button" id="homeBtn" aria-label="ホーム（一覧）へ"><span class="logo">手順<b>帳</b></span><span class="sub">STEP CARDS</span></button>
     <div class="gearwrap">
       <button class="gear" id="settingsBtn" type="button" aria-label="設定" title="設定">⚙️<span class="gear-txt">設定</span></button>
       <div class="gear-hint hide" id="gearHint">バックアップや画面設定はこちら</div>
@@ -484,7 +484,7 @@
 
         <div class="field">
           <label>注意・コツ <span class="opt">任意・1行に1つ（改行で区切る）</span></label>
-          <textarea id="fCaution" rows="3" placeholder="例：火のそばを離れない&#10;太い根は切りすぎない（1/3まで）"></textarea>
+          <textarea id="fCaution" rows="3" placeholder="例：火のそばを離れない&#10;焦げやすいので弱火で"></textarea>
           <p class="hint">改行すると複数に分かれて表示されます。「1/3」など半角スラッシュも本文にそのまま使えます。</p>
         </div>
 
@@ -492,7 +492,7 @@
           <label>手順</label>
           <div id="stepList"></div>
           <button class="addstep" type="button" onclick="addStepRow()">＋ 手順を追加</button>
-          <p class="hint">「塩 2g」「ねじ 4本」のように数量も書いておくと分かりやすいです。各手順の📷から写真も付けられます。</p>
+          <p class="hint">「塩 2g」「水 400ml」のように数量も書いておくと分かりやすいです。各手順の📷から写真も付けられます。</p>
           <input type="file" id="stepPhotoInput" accept="image/*" style="display:none">
         </div>
 
@@ -631,7 +631,7 @@ let items = [];
 let activeCat="すべて", editingId=null, formPhoto=null, tier="free";
 let _lastBackupAt=null, _hintSeen=false, wakeOn=false, darkOn=false;   // 設定/バックアップ状態（meta連動・ランタイムキャッシュ）
 let _iosHintSeen=false, _deferredPrompt=null;            // PWA：iOS追加案内の既読／Androidインストール保留プロンプト
-const CATS_DEFAULT=["料理","掃除","家事","園芸・盆栽","ものづくり","その他"];
+const CATS_DEFAULT=["料理","掃除","園芸","工作","その他"];
 let cats=[...CATS_DEFAULT];        // 実カテゴリ（順序付き）。「すべて」は実体でなくUIフィルタなので含めない
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
@@ -1495,6 +1495,12 @@ async function saveDish(){
 }
 
 /* 設定への入口・画面常時オントグル */
+/* ロゴ＝ホーム（一覧）へ戻る */
+function goHome(){
+  if(!$("#view-list").classList.contains("hide")){ window.scrollTo(0,0); return; }   // 既にホームなら最上部へ
+  renderGrid(); show("list"); history.pushState({v:"list"},"");
+}
+$("#homeBtn").addEventListener("click",goHome);
 $("#settingsBtn").addEventListener("click",openSettings);
 $("#wakeToggle").addEventListener("click",()=>setWake(!wakeOn));
 $("#darkToggle").addEventListener("click",()=>setDark(!darkOn));
