@@ -1,0 +1,9 @@
+# 開発用スクリーンショット・検証ツール（端末内のみ。GitHub等に上げない）
+.shots/
+
+# 依存（必要なら各自インストール）
+node_modules/
+
+# OS・エディタ
+.DS_Store
+Thumbs.db

@@ -56,20 +56,34 @@
   .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
   .chip{font-size:13px;font-weight:500;padding:7px 14px;border-radius:999px;background:var(--paper-2);color:var(--ink-soft)}
   .chip.sel{background:var(--ink);color:var(--paper)}
+  .chip-add{font-size:13px;font-weight:700;padding:7px 12px;border-radius:999px;background:transparent;border:1.5px dashed var(--line);color:var(--indigo)}
+  .chip-add:active{transform:translateY(1px)}
+  .chip-add-row{margin:-8px 0 18px}
+  .chip-add-row .link-btn{flex:none}
 
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
-  .card-item{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);text-align:left;display:flex;flex-direction:column;transition:transform .12s,box-shadow .12s}
+  /* 一覧：モバイルは1行カード（リスト）をベース、広い画面はカードグリッドに切替 */
+  .grid{display:flex;flex-direction:column;gap:10px}
+  .card-item{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);
+    text-align:left;display:flex;flex-direction:row;align-items:stretch;transition:transform .12s,box-shadow .12s}
   .card-item:active{transform:translateY(1px)}
   .card-item:hover{box-shadow:0 2px 4px rgba(30,35,48,.07),0 16px 32px rgba(30,35,48,.1)}
-  .thumb{aspect-ratio:4/3;background:var(--paper-2);position:relative;overflow:hidden}
+  .thumb{flex:none;width:92px;align-self:stretch;background:var(--paper-2);position:relative;overflow:hidden}
   .thumb img{width:100%;height:100%;object-fit:cover}
-  .thumb .ph{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--faint);
-    background:repeating-linear-gradient(135deg,#EDE7D8 0 12px,#E9E2D0 12px 24px)}
-  .thumb .ph .cam{font-size:26px;opacity:.5}
-  .thumb .ph span{font-size:11px;font-family:"Roboto Mono",monospace;letter-spacing:.05em}
-  .thumb .cattab{position:absolute;top:0;left:14px;background:var(--indigo);color:#fff;font-size:11px;font-weight:700;padding:5px 10px 6px;border-radius:0 0 8px 8px}
-  .card-item .body{padding:13px 14px 14px}
-  .card-item h3{font-size:18px;font-weight:900;letter-spacing:.01em;margin-bottom:8px;line-height:1.25}
+  .thumb.noimg{display:flex;align-items:center;justify-content:center;background:var(--indigo-wash)}
+  .thumb.noimg .ic{font-size:24px;opacity:.55}
+  .card-item .body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;padding:11px 4px 11px 13px}
+  .card-item h3{font-size:16px;font-weight:800;letter-spacing:.01em;margin-bottom:6px;line-height:1.3;
+    overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .card-item .chev{flex:none;display:flex;align-items:center;padding:0 12px;color:var(--faint);font-size:22px;font-weight:700}
+  @media(min-width:681px){
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+    .card-item{flex-direction:column}
+    .thumb{width:auto;aspect-ratio:4/3}
+    .thumb.noimg .ic{font-size:30px}
+    .card-item .body{padding:13px 14px 14px}
+    .card-item h3{font-size:18px;font-weight:900;margin-bottom:8px;-webkit-line-clamp:unset}
+    .card-item .chev{display:none}
+  }
   .meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .tag{font-family:"Roboto Mono",monospace;font-size:11px;font-weight:700;letter-spacing:.03em;padding:3px 8px;border-radius:6px;background:var(--paper-2);color:var(--ink-soft)}
   .tag.done{background:var(--indigo-wash);color:var(--indigo)}
@@ -113,10 +127,6 @@
   .step .n{flex:none;width:26px;font-family:"Roboto Mono",monospace;font-weight:700;font-size:16px;color:var(--ink-soft);text-align:center;padding-top:5px}
   .step .txt{font-size:16px;line-height:1.5;padding-top:4px;flex:1}
   .step.done .txt{color:var(--faint)}
-  .qty{display:inline-flex;align-items:baseline;gap:2px;background:var(--indigo);color:#fff;border-radius:999px;font-family:"Roboto Mono",monospace;font-weight:700;padding:1px 11px 2px;margin:0 2px;vertical-align:1px;box-shadow:0 1px 0 var(--indigo-deep)}
-  .step.done .qty{background:#A9B2C4;box-shadow:none}
-  .qty .num{font-size:18px;line-height:1}
-  .qty .unit{font-size:11px}
 
   /* completion / やったこと */
   .finish{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:24px;background:var(--card);border:1px solid var(--line);border-radius:13px;padding:15px 18px;box-shadow:var(--shadow)}
@@ -149,9 +159,15 @@
   .gear{display:flex;align-items:center;gap:7px;font-size:18px;line-height:1;padding:8px 12px;border:1.5px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink)}
   .gear .gear-txt{font-size:13px;font-weight:700}
   .gear:active{transform:translateY(1px)}
-  .gear-hint{position:absolute;top:calc(100% - 2px);right:14px;z-index:31;background:var(--indigo);color:#fff;font-size:12px;font-weight:700;
-    padding:8px 12px;border-radius:10px;box-shadow:var(--shadow);max-width:220px;line-height:1.4}
-  .gear-hint::before{content:"";position:absolute;top:-6px;right:22px;border:6px solid transparent;border-top:0;border-bottom:6px solid var(--indigo)}
+  .gearwrap{position:relative;display:flex}
+  .gear-hint{position:absolute;top:50%;right:calc(100% + 10px);transform:translateY(-50%);z-index:31;
+    background:var(--indigo);color:#fff;font-size:12px;font-weight:700;white-space:nowrap;
+    padding:8px 12px;border-radius:10px;box-shadow:var(--shadow);line-height:1.4;
+    opacity:0;transition:opacity .22s ease;pointer-events:none}
+  .gear-hint.show{opacity:1}
+  .gear-hint::before{content:"";position:absolute;top:50%;right:-6px;transform:translateY(-50%);
+    border:6px solid transparent;border-right:0;border-left:6px solid var(--indigo)}
+  @media(max-width:420px){ .gear-hint{font-size:11px;padding:7px 10px} }
   @media(max-width:520px){ .gear .gear-txt{display:none} }
 
   /* iOS インストール案内帯 */
@@ -225,12 +241,30 @@
   .field input:focus,.field textarea:focus,.field select:focus{border-color:var(--indigo)}
   .field textarea{resize:vertical;min-height:60px;line-height:1.5}
   .drop{border:2px dashed var(--line);border-radius:13px;background:var(--paper-2);aspect-ratio:16/7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:var(--faint);cursor:pointer;position:relative;overflow:hidden}
+  .drop.has-photo{aspect-ratio:4/3;border-style:solid}   /* 写真ありは保存結果と同じ4:3で正確にプレビュー */
   .drop:hover{border-color:var(--indigo);color:var(--ink-soft)}
   .drop img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .drop .cam{font-size:30px;opacity:.55}
   .drop input{display:none}
   .drop-del{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;background:rgba(30,35,48,.72);color:#fff;font-size:18px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;z-index:2;box-shadow:0 1px 4px rgba(0,0,0,.3)}
   .drop-del:active{transform:translateY(1px)}
+  .drop-edit{position:absolute;top:8px;right:46px;height:30px;padding:0 12px;border-radius:999px;background:rgba(30,35,48,.72);color:#fff;font-size:13px;font-weight:700;line-height:30px;z-index:2;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+  .drop-edit:active{transform:translateY(1px)}
+
+  /* 写真トリミングのモーダル */
+  .crop-card{background:var(--card);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);width:100%;max-width:420px;padding:16px}
+  .crop-stage{position:relative;width:100%;aspect-ratio:4/3;background:#000;border-radius:10px;overflow:hidden;touch-action:none;cursor:grab;user-select:none}
+  .crop-stage:active{cursor:grabbing}
+  .crop-stage img{position:absolute;left:0;top:0;max-width:none;pointer-events:none;user-select:none}
+  .crop-bg{inset:0;width:100%!important;height:100%!important;left:0;top:0;object-fit:cover;filter:blur(18px) brightness(.72);transform:scale(1.12)}
+  .crop-frame{position:absolute;inset:0;pointer-events:none;box-shadow:0 0 0 1px rgba(255,255,255,.55) inset}
+  .crop-presets{display:flex;justify-content:center;margin-top:10px}
+  .crop-controls{display:flex;align-items:center;gap:10px;margin:14px 2px 0}
+  .crop-controls input[type=range]{flex:1}
+  .crop-zoom-ic{font-weight:900;color:var(--ink-soft);font-size:16px;width:18px;text-align:center}
+  .crop-actions{display:flex;gap:10px;margin-top:12px}
+  .crop-actions .save{flex:1}
+  .crop-actions .cancel{flex:none}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .steprow{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
   .steprow .sn{flex:none;width:24px;height:46px;display:flex;align-items:center;justify-content:center;font-family:"Roboto Mono",monospace;font-weight:700;color:var(--faint)}
@@ -264,6 +298,29 @@
   .printrow{margin-top:14px;text-align:center}
   .printbtn{font-size:14px;font-weight:700;color:var(--ink);padding:11px 18px;border:1.5px solid var(--line);border-radius:10px;background:var(--card)}
   .printbtn:active{transform:translateY(1px)}
+
+  /* ===== ダークモード（:root変数の上書き＋一部ハードコード色の調整） ===== */
+  [data-theme="dark"]{
+    --paper:#14161B; --paper-2:#21242E; --card:#1B1E26;
+    --ink:#ECEDF1; --ink-soft:#A7AEBF; --faint:#717789;
+    --line:#2E323D; --indigo:#5E8AC8; --indigo-deep:#3A5C8C; --indigo-wash:#1F2A3B;
+    --amber:#D9A24E; --amber-wash:#322714; --ok:#3E9468;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 28px rgba(0,0,0,.45);
+  }
+  [data-theme="dark"] .caution{border-color:#5A4A26}
+  [data-theme="dark"] .caution .lbl{color:#E7C173}
+  [data-theme="dark"] .reminder{border-color:#5A4A26}
+  [data-theme="dark"] .reminder .rm-txt{color:#E7C173}
+  [data-theme="dark"] .ios-hint{border-color:#33425C}
+  [data-theme="dark"] .ios-hint .ih-txt{color:#AFC4E6}
+  [data-theme="dark"] .cat-del{color:#E0796E;border-color:#5A3A36}
+  [data-theme="dark"] .btn-del-item{color:#E0796E;border-color:#5A3A36}
+  [data-theme="dark"] .modal-actions .btn-ok.btn-danger{background:#B8463C;border-color:#9E2B22}
+  [data-theme="dark"] .hero .photo .ph{
+    background:repeating-linear-gradient(135deg,#23262F 0 12px,#1E212A 12px 24px)}
+  [data-theme="dark"] .wake .dot{background:#5A6072}
+  /* 設定：2つ目以降のトグルを区切る */
+  .set-sec .set-toggle + .set-toggle{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
 
   /* ===== 印刷／PDF：開いている手順を1枚にきれいに整形 ===== */
   @media print{
@@ -308,18 +365,16 @@
     /* 手書き用の空チェックボックス（□）。.check を四角い空欄に転用 */
     .step .check{width:5mm;height:5mm;min-width:5mm;border:1.5px solid #000;border-radius:1px;
       background:#fff !important;color:transparent !important;box-shadow:none;margin-top:1mm}
-
-    /* 数字チップ：背景に頼らず枠線＋太字で白黒でも数値が読める */
-    .qty{background:#fff !important;border:1.5px solid #000;box-shadow:none;color:#000 !important;padding:0 6px 1px}
-    .qty .num,.qty .unit{color:#000 !important}
   }
 </style>
 
 <div class="app">
   <header class="bar">
     <div class="brand"><span class="logo">手順<b>帳</b></span><span class="sub">STEP CARDS</span></div>
-    <button class="gear" id="settingsBtn" type="button" aria-label="設定" title="設定">⚙️<span class="gear-txt">設定</span></button>
-    <div class="gear-hint hide" id="gearHint">バックアップや画面設定はこちら</div>
+    <div class="gearwrap">
+      <button class="gear" id="settingsBtn" type="button" aria-label="設定" title="設定">⚙️<span class="gear-txt">設定</span></button>
+      <div class="gear-hint hide" id="gearHint">バックアップや画面設定はこちら</div>
+    </div>
   </header>
 
   <main>
@@ -337,7 +392,12 @@
         <button class="add" type="button" onclick="openForm()">＋ 新しい手順</button>
       </div>
       <div class="chips" id="chips"></div>
-      <div class="subbar"><button class="link-btn" type="button" id="btnReorder">≡ 並べ替え</button></div>
+      <div class="cat-add-row chip-add-row hide" id="chipAddRow">
+        <input type="text" id="chipNewName" placeholder="新しいタブ名" maxlength="20">
+        <button type="button" class="dz-btn" id="chipAddBtn2">追加</button>
+        <button type="button" class="link-btn" id="chipAddCancel">やめる</button>
+      </div>
+      <div class="subbar hide" id="subbar"><button class="link-btn" type="button" id="btnReorder">≡ 並べ替え</button></div>
       <div class="grid" id="grid"></div>
     </section>
 
@@ -345,8 +405,8 @@
     <section id="view-reorder" class="hide">
       <button class="back" type="button" onclick="history.back()">‹ 保存せず戻る</button>
       <div class="setwrap">
-        <div class="reorder-head"><h1 class="set-title" style="margin:0">並べ替え</h1><button class="edit-btn primary" type="button" id="btnReorderDone">完了</button></div>
-        <p class="hint" style="margin:6px 0 14px">ハンドル（≡）をつかんで上下にドラッグ。「完了」で保存します。</p>
+        <div class="reorder-head"><h1 class="set-title" style="margin:0" id="reorderTitle">並べ替え</h1><button class="edit-btn primary" type="button" id="btnReorderDone">完了</button></div>
+        <p class="hint" style="margin:6px 0 14px" id="reorderHint">ハンドル（⋮⋮）をつかんで上下にドラッグ。「完了」で保存します。</p>
         <div id="reorderList"></div>
       </div>
     </section>
@@ -370,9 +430,10 @@
             <input type="file" id="photoInput" accept="image/*">
             <span class="cam" id="dropIcon">📷</span>
             <span id="dropTxt" style="font-family:'Roboto Mono',monospace;font-size:12px">タップして写真を選ぶ</span>
+            <button type="button" class="drop-edit hide" id="dropEdit" title="写真を調整" aria-label="写真を調整">調整</button>
             <button type="button" class="drop-del hide" id="dropDel" title="写真を削除" aria-label="写真を削除">×</button>
           </label>
-          <p class="hint">別の写真を選ぶと入れ替わります。×で写真なしに戻せます。</p>
+          <p class="hint">写真を選ぶと、切り抜き（トリミング）と位置・拡大の調整ができます。「調整」でやり直し、×で写真なしに戻せます。</p>
         </div>
 
         <div class="row2">
@@ -397,16 +458,16 @@
         </div>
 
         <div class="field">
-          <label>注意・コツ <span class="opt">任意</span></label>
-          <input type="text" id="fCaution" placeholder="例：火のそばを離れない／熱いので注意">
-          <p class="hint">ここに書いた内容は詳細画面の上部に目立つ帯で出ます。</p>
+          <label>注意・コツ <span class="opt">任意・1行に1つ（改行で区切る）</span></label>
+          <textarea id="fCaution" rows="3" placeholder="例：火のそばを離れない&#10;太い根は切りすぎない（1/3まで）"></textarea>
+          <p class="hint">改行すると複数に分かれて表示されます。「1/3」など半角スラッシュも本文にそのまま使えます。</p>
         </div>
 
         <div class="field">
           <label>手順</label>
           <div id="stepList"></div>
           <button class="addstep" type="button" onclick="addStepRow()">＋ 手順を追加</button>
-          <p class="hint">「塩2g」「ねじ4本」のように数字を入れると、表示時に色付きチップで強調されます。</p>
+          <p class="hint">「塩 2g」「ねじ 4本」のように数量も書いておくと分かりやすいです。</p>
         </div>
 
         <div class="formbar">
@@ -438,6 +499,10 @@
           <div class="set-sec-h">画面</div>
           <button class="set-toggle" id="wakeToggle" type="button" role="switch" aria-checked="false">
             <span class="st-label"><b>画面を常にオン</b><span class="st-sub">作業中に画面が消えないようにします（スマートフォン向け設定）</span></span>
+            <span class="switch"><span class="knob"></span></span>
+          </button>
+          <button class="set-toggle" id="darkToggle" type="button" role="switch" aria-checked="false">
+            <span class="st-label"><b>ダークモード</b><span class="st-sub">暗い配色にします。有機EL画面では電池の節約にもなります</span></span>
             <span class="switch"><span class="knob"></span></span>
           </button>
         </div>
@@ -480,62 +545,53 @@
   </div>
 </div>
 
+<!-- 写真トリミング（4:3・ドラッグで位置／スライダーで拡大。外部ライブラリなし・Canvasで切り出し） -->
+<div class="modal-ov hide" id="cropOv">
+  <div class="crop-card" role="dialog" aria-modal="true" aria-label="写真の調整">
+    <div class="crop-stage" id="cropStage">
+      <img id="cropBg" class="crop-bg" alt="" aria-hidden="true">
+      <img id="cropImg" alt="">
+      <div class="crop-frame"></div>
+    </div>
+    <div class="crop-controls">
+      <span class="crop-zoom-ic" aria-hidden="true">－</span>
+      <input type="range" id="cropZoom" min="1" max="4" step="0.01" value="1" aria-label="拡大・縮小">
+      <span class="crop-zoom-ic" aria-hidden="true">＋</span>
+    </div>
+    <div class="crop-presets"><button type="button" class="link-btn" id="cropFit">写真全体を表示</button></div>
+    <div class="crop-actions">
+      <button type="button" class="cancel" id="cropCancel">やめる</button>
+      <button type="button" class="save" id="cropOk">この範囲で決定</button>
+    </div>
+    <p class="hint" style="text-align:center;margin-top:8px">ドラッグで位置、スライダーで拡大・縮小。「写真全体を表示」で全体を枠に収め、余白はぼかしで埋めます。</p>
+  </div>
+</div>
+
 <script>
+/* 起動直後にOSの配色設定を即反映（チラつき防止）。保存済みの明示設定はboot後に上書きする */
+try{ if(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.setAttribute("data-theme","dark"); }catch(e){}
+
 /* ===== サンプル（初回のみ seed する種データ。schema/createdAt等は seed時に normalize で付与） ===== */
 const SAMPLE = [
   {
-    id:1, name:"シンパクの植え替え", cat:"園芸・盆栽", place:"ベランダ", time:30, photo:null,
-    tools:["剣先スコップ","針金","赤玉土","桐生砂","鉢底ネット"],
-    cautions:["真夏・真冬は避け、春か秋に行う","太い根は切りすぎない（1/3まで）"],
+    id:1, name:"肉じゃが", cat:"料理", place:"コンロ", time:40, photo:null,
+    tools:["じゃがいも 3個","にんじん 1本","玉ねぎ 1個","牛こま切れ肉 200g","しらたき 1袋","鍋・落とし蓋"],
+    cautions:["煮立ったらアクをすくう","落とし蓋をして弱めの中火でコトコト煮る","火を止めてから少し置くと味がしみる"],
     steps:[
-      {body:"鉢から根鉢ごと抜き、古い土を{1}/3ほど落とす"},
-      {body:"伸びすぎた根を整理し、長い根を{1}/3切り戻す"},
-      {body:"用土は赤玉土{7}：桐生砂{3}で混ぜておく"},
-      {body:"鉢底ネットを敷き、針金{1}本で幹を固定する"},
-      {body:"用土を入れて箸で隙間を突き、水が透明になるまで{1}回たっぷり水やり"},
-    ],
-    log:["2026-04-12"]
-  },
-  {
-    id:2, name:"換気扇の油汚れ落とし", cat:"掃除", place:"キッチン", time:45, photo:null,
-    tools:["ゴム手袋","重曹","古歯ブラシ","スポンジ"],
-    cautions:["作業前に必ず換気扇の電源を切る","シロッコファンは無理に曲げない"],
-    steps:[
-      {body:"電源を切り、フィルターとファンを外す"},
-      {body:"60℃のお湯{2}Lに重曹{大さじ3}を溶かす"},
-      {body:"つけ置き{30}分。油が浮いたら歯ブラシでこする"},
-      {body:"よくすすいで完全に乾かしてから戻す"},
-    ],
-    log:[]
-  },
-  {
-    id:3, name:"革のキーホルダー", cat:"ものづくり", place:"作業机", time:60, photo:null,
-    tools:["革ハギレ","菱目打ち","蝋引き糸","木槌","コバ磨き"],
-    cautions:["菱目打ちは下にゴム板を敷く","糸は縫う長さの{4}倍を用意"],
-    steps:[
-      {body:"型紙に合わせて革を切り出し、穴位置に印をつける"},
-      {body:"菱目打ちで縫い穴を{6}つ開ける"},
-      {body:"両端から手縫いで{1}本ずつ通し、返し縫いで留める"},
-      {body:"コバを水で湿らせ、{2}回磨いて仕上げる"},
-    ],
-    log:["2026-03-02","2026-05-20"]
-  },
-  {
-    id:4, name:"基本のかつおだし", cat:"料理", place:"コンロ", time:15, photo:null,
-    tools:["鍋","ざる","キッチンペーパー"],
-    cautions:["昆布は沸騰前に取り出す（ぬめり防止）"],
-    steps:[
-      {body:"水{1}Lに昆布{10}gを入れ、弱火にかける"},
-      {body:"沸騰直前で昆布を取り出す"},
-      {body:"かつお節{20}gを加え、{1}分煮て火を止める"},
-      {body:"そのまま沈むまで置き、ペーパーで濾す"},
+      {body:"じゃがいもは皮をむいて大きめの一口大、にんじんは乱切り、玉ねぎはくし切りにする"},
+      {body:"しらたきは下ゆでして食べやすい長さに切る"},
+      {body:"鍋に油を熱し、牛肉を炒めて色が変わったら玉ねぎを加える"},
+      {body:"じゃがいもとにんじんを加えて軽く炒め、水400mlを注ぐ"},
+      {body:"醤油・砂糖・みりん各大さじ3、酒大さじ2を加える"},
+      {body:"煮立ったらアクを取り、落とし蓋をして弱めの中火で15〜20分煮る"},
+      {body:"じゃがいもが柔らかくなったら火を止め、10分ほど置いて味を含ませる"},
     ],
     log:[]
   },
 ];
 let items = [];
 let activeCat="すべて", editingId=null, formPhoto=null, tier="free";
-let _lastBackupAt=null, _hintSeen=false, wakeOn=false;   // 設定/バックアップ状態（meta連動・ランタイムキャッシュ）
+let _lastBackupAt=null, _hintSeen=false, wakeOn=false, darkOn=false;   // 設定/バックアップ状態（meta連動・ランタイムキャッシュ）
 let _iosHintSeen=false, _deferredPrompt=null;            // PWA：iOS追加案内の既読／Androidインストール保留プロンプト
 const CATS_DEFAULT=["料理","掃除","家事","園芸・盆栽","ものづくり","その他"];
 let cats=[...CATS_DEFAULT];        // 実カテゴリ（順序付き）。「すべて」は実体でなくUIフィルタなので含めない
@@ -602,14 +658,8 @@ async function nextId(){_lastId++;await metaSet("lastId",_lastId);return _lastId
 function show(v){["list","detail","form","settings","reorder"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));window.scrollTo(0,0)}
 
 function fmt(t){
-  let h=t.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
-  // {数値}＋単位。単位は「ラテン文字/記号の連続」「つ」「漢字・カタカナ1文字」のみ。
-  // 助詞や動詞（を・ず・で・開ける等）は単位に取り込まない。
-  h=h.replace(/\{([^}]+)\}([A-Za-z%‰°ℓ]+|つ|[一-龯々ヵヶァ-ヴ])?/g,(m,inner,u)=>{
-    const unit=u||"";
-    return `<span class="qty"><span class="num">${inner}</span>${unit?`<span class="unit">${unit}</span>`:""}</span>`;
-  });
-  return h;
+  // 数字チップは廃止。<>&をエスケープし、旧データに残る波括弧は除いて入力どおりに表示
+  return String(t).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])).replace(/[{}]/g,"");
 }
 function toast(msg,opt){
   const t=$("#toast");clearTimeout(t._t);
@@ -672,23 +722,39 @@ function showConfirm({title="確認",body="",okLabel="OK",danger=false}={}){
 /* 一覧 */
 function renderChips(){
   const all=["すべて",...cats];
-  $("#chips").innerHTML=all.map(c=>`<button class="chip ${c===activeCat?'sel':''}" type="button" data-cat="${esc(c)}">${esc(c)}</button>`).join("");
+  $("#chips").innerHTML=all.map(c=>`<button class="chip ${c===activeCat?'sel':''}" type="button" data-cat="${esc(c)}">${esc(c)}</button>`).join("")
+    +`<button class="chip-add" type="button" aria-label="タブを追加">＋ タブ</button>`;
 }
 function setCat(c){activeCat=c;renderChips();renderGrid()}
-$("#chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(b)setCat(b.dataset.cat)});
+$("#chips").addEventListener("click",e=>{
+  if(e.target.closest(".chip-add")){ openChipAdd(); return; }
+  const b=e.target.closest(".chip");if(b)setCat(b.dataset.cat);
+});
+/* ホームのチップ脇からタブを追加（設定を開かずに完結） */
+function openChipAdd(){ $("#chipAddRow").classList.remove("hide"); const i=$("#chipNewName"); i.value=""; i.focus(); }
+function closeChipAdd(){ $("#chipAddRow").classList.add("hide"); $("#chipNewName").value=""; }
+async function submitChipAdd(){
+  const name=$("#chipNewName").value;
+  if(await addCategory(name)){ closeChipAdd(); setCat(name); toast("タブを追加しました"); }
+}
 function renderGrid(){
   renderReminder();
   const q=$("#q").value.trim();
+  const catCount=items.filter(d=>activeCat==="すべて"||d.cat===activeCat).length;
+  const sb=$("#subbar"); if(sb) sb.classList.toggle("hide", !!q || catCount<2);   // 検索中や対象1件以下では並べ替えを出さない
   const list=items.filter(d=>(activeCat==="すべて"||d.cat===activeCat)&&(!q||d.name.includes(q)));
   if(!list.length){$("#grid").innerHTML=`<div style="grid-column:1/-1;padding:48px 0;text-align:center;color:var(--faint)">該当なし。「＋ 新しい手順」から追加できます。</div>`;return}
   $("#grid").innerHTML=list.map(d=>{
-    const thumb=d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph"><span class="cam">📷</span><span>写真なし</span></div>`;
-    const last=d.log&&d.log.length?`<span class="tag done">✓ ${d.log[d.log.length-1]}</span>`:"";
+    const thumb=d.photo
+      ?`<div class="thumb"><img src="${d.photo}" alt=""></div>`
+      :`<div class="thumb noimg"><span class="ic" aria-hidden="true">📷</span></div>`;
+    const last=d.log&&d.log.length?`<span class="tag done">✓ ${esc(d.log[d.log.length-1])}</span>`:"";
     return `<button class="card-item" type="button" onclick="openDetail(${d.id})">
-      <div class="thumb">${thumb}<span class="cattab">${d.cat}</span></div>
-      <div class="body"><h3>${d.name}</h3>
-        <div class="meta">${d.time?`<span class="tag">⏱ ${d.time}分</span>`:""}${last}</div>
-      </div></button>`;
+      ${thumb}
+      <div class="body"><h3>${esc(d.name)}</h3>
+        <div class="meta"><span class="tag cat">${esc(d.cat)}</span>${d.time?`<span class="tag">⏱ ${esc(String(d.time))}分</span>`:""}${last}</div>
+      </div>
+      <span class="chev" aria-hidden="true">›</span></button>`;
   }).join("");
 }
 
@@ -705,7 +771,7 @@ function openDetail(id){ renderDetail(id); history.pushState({v:"detail",id},"")
 function paintDetail(d){
   const photo=d.photo?`<img src="${d.photo}" alt=""><span class="stamp">仕上がり目安</span>`:`<div class="ph"><span class="cam">📷</span><span style="font-family:'Roboto Mono',monospace;font-size:12px">写真 未登録</span></div>`;
   const caution=d.cautions.length?`<div class="caution"><div class="lbl">注意・コツ</div><ul>${d.cautions.map(c=>`<li>${fmt(c)}</li>`).join("")}</ul></div>`:"";
-  const tools=d.tools&&d.tools.length?`<div class="tools"><span class="lbl">用意するもの</span>${d.tools.map(t=>`<span class="toolchip">${t}</span>`).join("")}</div>`:"";
+  const tools=d.tools&&d.tools.length?`<div class="tools"><span class="lbl">用意するもの</span>${d.tools.map(t=>`<span class="toolchip">${esc(t)}</span>`).join("")}</div>`:"";
   const done=viewState.checked.filter(Boolean).length;
   const steps=d.steps.map((s,i)=>`
     <div class="step ${viewState.checked[i]?'done':''}" id="st${i}">
@@ -714,15 +780,15 @@ function paintDetail(d){
       <div class="txt">${fmt(s.body)}</div>
     </div>`).join("");
   const logHtml=d.log&&d.log.length
-    ?`前回 <b>${d.log[d.log.length-1]}</b>・通算 <b>${d.log.length}</b>回`
+    ?`前回 <b>${esc(d.log[d.log.length-1])}</b>・通算 <b>${d.log.length}</b>回`
     :`<span class="none">まだ記録なし</span>`;
   $("#detailBody").innerHTML=`
     <div class="detail-head"><button class="edit-btn" type="button" onclick="exportItem(${d.id})">共有</button><button class="edit-btn" type="button" onclick="duplicateItem(${d.id})">複製</button><button class="edit-btn primary" type="button" onclick="openForm(${d.id})">編集</button></div>
     <div class="hero">
       <div class="photo">${photo}</div>
       <div class="titleblock">
-        <h1>${d.name}</h1>
-        <div class="submeta"><span class="tag">${d.cat}</span>${d.place?`<span class="tag">📍 ${d.place}</span>`:""}${d.time?`<span class="tag">⏱ ${d.time}分</span>`:""}</div>
+        <h1>${esc(d.name)}</h1>
+        <div class="submeta"><span class="tag">${esc(d.cat)}</span>${d.place?`<span class="tag">📍 ${esc(d.place)}</span>`:""}${d.time?`<span class="tag">⏱ ${esc(String(d.time))}分</span>`:""}</div>
         ${caution}${tools}
       </div>
     </div>
@@ -853,16 +919,45 @@ function renderReminder(){
   }else{ el.classList.add("hide"); el.innerHTML=""; }
 }
 
+/* 初回ヒント：歯車を指す吹き出し。最初のタップ/スクロール/5秒で自動的に消し、以後二度と出さない */
+let _hintTimer=null;
+function showGearHint(){
+  const el=$("#gearHint"); if(!el)return;
+  el.classList.remove("hide"); requestAnimationFrame(()=>el.classList.add("show"));
+  _hintTimer=setTimeout(dismissGearHint,5000);
+  window.addEventListener("pointerdown",dismissGearHint,{once:true,capture:true});
+  window.addEventListener("scroll",dismissGearHint,{once:true,capture:true,passive:true});
+}
+function dismissGearHint(){
+  const el=$("#gearHint");
+  if(_hintSeen){ if(el)el.classList.add("hide"); return; }   // 既に既読なら何もしない
+  clearTimeout(_hintTimer);
+  window.removeEventListener("pointerdown",dismissGearHint,{capture:true});
+  window.removeEventListener("scroll",dismissGearHint,{capture:true});
+  if(el){ el.classList.remove("show"); setTimeout(()=>el.classList.add("hide"),220); }
+  _hintSeen=true; metaSet("hintSeen",true).catch(()=>{});
+}
 function openSettings(){
-  if(!_hintSeen){ _hintSeen=true; metaSet("hintSeen",true); $("#gearHint").classList.add("hide"); }
+  dismissGearHint();
   renderSettings(); show("settings"); history.pushState({v:"settings"},"");
 }
 function renderSettings(){
   const bs=$("#backupStatus");
   if(bs) bs.textContent=_lastBackupAt?`前回バックアップ：${daysSince(_lastBackupAt)}日前（${_lastBackupAt.slice(0,10)}）`:"まだ書き出していません";
   updateWakeToggleUI();
+  applyTheme();          // ダークモードのトグル表示を同期
   renderCatManager();
 }
+
+/* ダークモード：data-theme属性で:root変数を切り替え。OSのブラウザUI色(theme-color)も合わせる */
+function applyTheme(){
+  document.documentElement.setAttribute("data-theme", darkOn?"dark":"light");
+  const tc=document.querySelector('meta[name="theme-color"]');
+  if(tc) tc.setAttribute("content", darkOn?"#14161B":"#2C4A78");
+  const t=$("#darkToggle");
+  if(t){ t.classList.toggle("on",darkOn); t.setAttribute("aria-checked",darkOn?"true":"false"); }
+}
+async function setDark(on){ darkOn=on; applyTheme(); try{ await metaSet("theme",on?"dark":"light"); }catch(e){} }
 
 /* 画面を常にオン（Wake Lock）。トグルON中はタブ復帰で取り直し（best-effort）。
    リロードでは自動再取得しない（wakeOnは初期false＝ユーザー操作起点を守る） */
@@ -933,24 +1028,38 @@ async function saveCatOrder(){
   renderChips();   // フォームのselectは開くたびcats順で生成されるため自動反映
 }
 
-/* ===== カードの並べ替え（1Dリスト・ステップのドラッグ部品を再利用） ===== */
-function openReorder(){ renderReorder(); history.pushState({v:"reorder"},""); }
+/* ===== カードの並べ替え（1Dリスト・ステップのドラッグ部品を再利用） =====
+   開いたときのタブ（reorderCat）単位で並べ替える。タブ指定時は、そのタブの手順が
+   現在占めているorder値（スロット）を新しい順序へ振り直す＝他タブの位置は崩れない。 */
+let reorderCat="すべて";
+function openReorder(){ reorderCat=activeCat; renderReorder(); history.pushState({v:"reorder"},""); }
+function reorderSubset(){ // 対象タブの手順を表示順（effOrder昇順）で
+  return items.filter(d=>reorderCat==="すべて"||d.cat===reorderCat)
+              .sort((a,b)=>effOrder(a)-effOrder(b)||a.id-b.id);
+}
 function renderReorder(){
-  // 現在のorder昇順で全手順を縦1列に。DOMが確定時の真実（完了でorder採番）
-  $("#reorderList").innerHTML=items.map(d=>
+  const cat=reorderCat, list=reorderSubset();
+  $("#reorderTitle").textContent = cat==="すべて" ? "並べ替え（すべて）" : `並べ替え（${cat}）`;
+  $("#reorderHint").textContent = cat==="すべて"
+    ? "ハンドル（⋮⋮）をつかんで上下にドラッグ。「完了」で保存します。"
+    : `『${cat}』タブの中だけで並べ替えます。ハンドル（⋮⋮）でドラッグし「完了」で保存。`;
+  $("#reorderList").innerHTML=list.map(d=>
     `<div class="reorder-row" data-id="${d.id}">`+
       `<button class="grip" type="button" title="ドラッグして並べ替え" aria-label="並べ替え">⋮⋮</button>`+
-      `<span class="rr-name">${fmt(d.name)}</span><span class="rr-cat">${fmt(d.cat)}</span>`+
+      `<span class="rr-name">${fmt(d.name)}</span>`+
+      (cat==="すべて"?`<span class="rr-cat">${fmt(d.cat)}</span>`:``)+
     `</div>`).join("");
   show("reorder");
 }
 async function saveReorder(){
-  // DOMの並び順にorderを振り直して永続化
   const rows=[...$("#reorderList").children];
+  // 表示中の手順が今占めているorder値（スロット）を昇順で取り出し、新しい並びへ割り当て直す
+  const subset=rows.map(r=>items.find(x=>x.id===+r.dataset.id)).filter(Boolean);
+  const slots=subset.map(effOrder).sort((a,b)=>a-b);
   try{
     for(let i=0;i<rows.length;i++){
       const id=+rows[i].dataset.id, d=items.find(x=>x.id===id);
-      if(d && d.order!==i){ d.order=i; await itemPut(d); }   // 変更分のみ書き込み（order未設定も!==で対象）
+      if(d && d.order!==slots[i]){ d.order=slots[i]; await itemPut(d); }   // 変更分のみ書き込み
     }
   }catch(e){ toast("並び順の保存に失敗しました"); return; }
   resortItems(); renderGrid();
@@ -1051,7 +1160,7 @@ function renderForm(id){ // 履歴を触らずにフォームを描画
     const d=items.find(x=>x.id===id);
     $("#fName").value=d.name;populateCatSelect(d.cat);$("#fPlace").value=d.place||"";$("#fTime").value=d.time||"";
     $("#fTools").value=(d.tools||[]).join("、");
-    $("#fCaution").value=(d.cautions||[]).join("／").replace(/\{|\}/g,"");
+    $("#fCaution").value=(d.cautions||[]).join("\n").replace(/\{|\}/g,"");
     d.steps.forEach(s=>addStepRow(s.body));
     if(d.photo){formPhoto=d.photo;fillDrop(d.photo)}
   }else{
@@ -1156,29 +1265,96 @@ function makeReorderable(listEl,{handleSelector=".grip",itemSelector=".steprow",
     handle.addEventListener("pointercancel",onUp);
   });
 }
-function resetDrop(){$("#drop").querySelector("img")?.remove();$("#dropIcon").style.display="";$("#dropTxt").textContent="タップして写真を選ぶ";$("#dropDel").classList.add("hide")}
-function fillDrop(src){resetDrop();const img=document.createElement("img");img.src=src;$("#drop").appendChild(img);$("#dropIcon").style.display="none";$("#dropTxt").textContent="";$("#dropDel").classList.remove("hide")}
-/* 写真：長辺〜1280pxに縮小しJPEG品質80%のbase64で保持（フル解像度は持たない／要件①） */
-function resizeToDataURL(file,maxEdge=1280,quality=0.8){
-  return new Promise((res,rej)=>{
-    const url=URL.createObjectURL(file), img=new Image();
-    img.onload=()=>{
-      let w=img.naturalWidth,h=img.naturalHeight;
-      if(Math.max(w,h)>maxEdge){const r=maxEdge/Math.max(w,h);w=Math.round(w*r);h=Math.round(h*r);}
-      const c=document.createElement("canvas");c.width=w;c.height=h;
-      c.getContext("2d").drawImage(img,0,0,w,h);
-      URL.revokeObjectURL(url);
-      res(c.toDataURL("image/jpeg",quality));
-    };
-    img.onerror=err=>{URL.revokeObjectURL(url);rej(err);};
-    img.src=url;
-  });
+function resetDrop(){$("#drop").querySelector("img")?.remove();$("#drop").classList.remove("has-photo");$("#dropIcon").style.display="";$("#dropTxt").textContent="タップして写真を選ぶ";$("#dropDel").classList.add("hide");$("#dropEdit").classList.add("hide")}
+function fillDrop(src){resetDrop();const img=document.createElement("img");img.src=src;$("#drop").appendChild(img);$("#drop").classList.add("has-photo");$("#dropIcon").style.display="none";$("#dropTxt").textContent="";$("#dropDel").classList.remove("hide");$("#dropEdit").classList.remove("hide")}
+
+/* ===== 写真トリミング（出力は4:3固定。ステージ＝出力範囲） =====
+   倍率 ds（表示スケール）を fit（全体が収まる）〜 cover×4 で自由に調整。
+   写真が枠より小さい向き（縦長など）では、余白を写真自身のぼかしで自動的に埋める＝撮り直し不要。
+   外部ライブラリなし。決定時にCanvasで合成し、長辺〜1280pxに縮小しJPEG85%で保持。 */
+let crop=null;
+function openCropper(srcUrl,isObjectURL){
+  const img=new Image();
+  img.onload=()=>{
+    $("#cropOv").classList.remove("hide"); document.body.classList.add("noscroll");
+    const stage=$("#cropStage");
+    const SW=stage.clientWidth, SH=stage.clientHeight;
+    if(!SW||!SH){ toast("画面の準備に失敗しました"); $("#cropOv").classList.add("hide"); document.body.classList.remove("noscroll"); if(isObjectURL)URL.revokeObjectURL(srcUrl); return; }
+    const nw=img.naturalWidth, nh=img.naturalHeight;
+    const fit=Math.min(SW/nw,SH/nh);           // 全体が枠に収まる倍率
+    const cover=Math.max(SW/nw,SH/nh);         // 枠を隙間なく覆う倍率
+    crop={img,srcUrl,isObjectURL,SW,SH,nw,nh,fit,cover,ds:cover,tx:0,ty:0};   // 初期は覆う表示
+    $("#cropImg").src=srcUrl; $("#cropBg").src=srcUrl;
+    const z=$("#cropZoom"); z.min=fit; z.max=cover*4; z.step=(cover*4-fit)/200||0.001; z.value=cover;
+    centerCrop(); clampCrop(); applyCropTransform();
+  };
+  img.onerror=()=>{ toast("画像を読み込めませんでした"); if(isObjectURL)URL.revokeObjectURL(srcUrl); };
+  img.src=srcUrl;
 }
-$("#photoInput").addEventListener("change",async e=>{
-  const f=e.target.files[0];if(!f)return;
-  try{ formPhoto=await resizeToDataURL(f); fillDrop(formPhoto); }
-  catch(err){ toast("画像を読み込めませんでした"); }
+function centerCrop(){ const c=crop; c.tx=(c.SW-c.nw*c.ds)/2; c.ty=(c.SH-c.nh*c.ds)/2; }
+/* 軸ごとに：枠より大きければはみ出しを抑え、小さければ中央寄せ（余白＝ぼかしで埋める） */
+function clampCrop(){
+  const c=crop, dispW=c.nw*c.ds, dispH=c.nh*c.ds;
+  c.tx = dispW<=c.SW ? (c.SW-dispW)/2 : Math.min(0,Math.max(c.SW-dispW,c.tx));
+  c.ty = dispH<=c.SH ? (c.SH-dispH)/2 : Math.min(0,Math.max(c.SH-dispH,c.ty));
+}
+function applyCropTransform(){ const c=crop, ci=$("#cropImg"); ci.style.width=(c.nw*c.ds)+"px"; ci.style.height=(c.nh*c.ds)+"px"; ci.style.left=c.tx+"px"; ci.style.top=c.ty+"px"; }
+function closeCropper(){
+  $("#cropOv").classList.add("hide"); document.body.classList.remove("noscroll");
+  if(crop&&crop.isObjectURL)URL.revokeObjectURL(crop.srcUrl);
+  $("#cropImg").src=""; $("#cropBg").src=""; crop=null; $("#photoInput").value="";   // 同じ写真を選び直せるように
+}
+function cropToDataURL(){
+  const c=crop, ds=c.ds;
+  let k=1/ds;                                  // 前景をほぼ原寸でレンダリングする出力倍率
+  let outW=Math.round(c.SW*k), outH=Math.round(c.SH*k);
+  const maxEdge=1280, m=Math.max(outW,outH);
+  if(m>maxEdge){ const r=maxEdge/m; outW=Math.round(outW*r); outH=Math.round(outH*r); k*=r; }
+  const cv=document.createElement("canvas"); cv.width=outW; cv.height=outH; const x=cv.getContext("2d");
+  // 背景：coverで敷いてぼかし、隙間を埋める（少し広げて端の透けを防ぐ）
+  const bgW=c.nw*c.cover*k*1.12, bgH=c.nh*c.cover*k*1.12;
+  x.filter=`blur(${Math.min(60,Math.max(8,Math.round(20*k)))}px) brightness(.72)`;
+  x.drawImage(c.img,(outW-bgW)/2,(outH-bgH)/2,bgW,bgH);
+  x.filter="none";
+  // 前景：プレビューと同じ位置・倍率
+  x.drawImage(c.img, c.tx*k, c.ty*k, c.nw*ds*k, c.nh*ds*k);
+  return cv.toDataURL("image/jpeg",0.85);
+}
+/* ファイル選択→トリミングへ */
+$("#photoInput").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f)return;
+  openCropper(URL.createObjectURL(f),true);
 });
+/* 既存写真を「調整」で再トリミング */
+$("#dropEdit").addEventListener("click",e=>{ e.preventDefault(); e.stopPropagation(); if(formPhoto) openCropper(formPhoto,false); });
+/* スライダー：ステージ中心を固定して倍率変更 */
+$("#cropZoom").addEventListener("input",e=>{
+  if(!crop)return; const c=crop, old=c.ds;
+  const cx=(c.SW/2-c.tx)/old, cy=(c.SH/2-c.ty)/old;     // 画面中心の下にある画像座標
+  c.ds=parseFloat(e.target.value);
+  c.tx=c.SW/2-cx*c.ds; c.ty=c.SH/2-cy*c.ds; clampCrop(); applyCropTransform();
+});
+/* 「写真全体を表示」：一発で全体を枠に収める */
+$("#cropFit").addEventListener("click",()=>{
+  if(!crop)return; crop.ds=crop.fit; centerCrop(); clampCrop(); applyCropTransform();
+  $("#cropZoom").value=String(crop.fit);
+});
+/* ドラッグで位置調整 */
+(function(){
+  const st=$("#cropStage"); let on=false,lx=0,ly=0,pid=null;
+  st.addEventListener("pointerdown",e=>{ if(!crop)return; on=true; pid=e.pointerId; lx=e.clientX; ly=e.clientY; try{st.setPointerCapture(pid)}catch(_){} });
+  st.addEventListener("pointermove",e=>{ if(!on||!crop)return; crop.tx+=e.clientX-lx; crop.ty+=e.clientY-ly; lx=e.clientX; ly=e.clientY; clampCrop(); applyCropTransform(); });
+  function end(){ if(!on)return; on=false; try{st.releasePointerCapture(pid)}catch(_){} }
+  st.addEventListener("pointerup",end); st.addEventListener("pointercancel",end);
+  st.addEventListener("wheel",e=>{ if(!crop)return; e.preventDefault(); const ns=Math.min(crop.cover*4,Math.max(crop.fit,crop.ds*(e.deltaY<0?1.08:0.92))); $("#cropZoom").value=String(ns); $("#cropZoom").dispatchEvent(new Event("input")); },{passive:false});
+})();
+$("#cropOk").addEventListener("click",()=>{
+  if(!crop)return;
+  let url; try{ url=cropToDataURL(); }catch(err){ toast("画像の処理に失敗しました"); return; }
+  formPhoto=url; fillDrop(url); closeCropper();
+});
+$("#cropCancel").addEventListener("click",closeCropper);
+$("#cropOv").addEventListener("mousedown",e=>{ if(e.target===$("#cropOv")) closeCropper(); });
 /* 写真を削除（labelのファイル選択を発火させないよう伝播停止）→ 写真なし状態へ */
 $("#dropDel").addEventListener("click",e=>{
   e.preventDefault(); e.stopPropagation();
@@ -1208,14 +1384,17 @@ $("#catAddBtn2").addEventListener("click",async()=>{
   if(await addCategory(name)){ $("#catNewName2").value=""; renderCatManager(); }
 });
 $("#catList").addEventListener("click",e=>{ const b=e.target.closest(".cat-del"); if(b) deleteCategory(b.closest(".cat-row").dataset.cat); });
+/* ホーム：チップ脇のタブ追加 */
+$("#chipAddBtn2").addEventListener("click",submitChipAdd);
+$("#chipAddCancel").addEventListener("click",closeChipAdd);
+$("#chipNewName").addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();submitChipAdd();} else if(e.key==="Escape"){closeChipAdd();} });
 
 async function saveDish(){
   const name=$("#fName").value.trim();
   if(!name){$("#fName").focus();$("#fName").style.borderColor="var(--indigo)";toast("タイトルを入れてください");return}
-  const toToken=t=>t.replace(/(大さじ\d+|小さじ\d+|\d+(?:\/\d+)?(?:\.\d+)?)/g,"{$1}");
-  const steps=[...$("#stepList").children].map(r=>r.querySelector("textarea").value.trim()).filter(Boolean).map(b=>({body:toToken(b)}));
+  const steps=[...$("#stepList").children].map(r=>r.querySelector("textarea").value.trim()).filter(Boolean).map(b=>({body:b}));
   const tools=$("#fTools").value.split(/[、,]/).map(s=>s.trim()).filter(Boolean);
-  const cautions=$("#fCaution").value.split(/[／\/]/).map(s=>s.trim()).filter(Boolean).map(toToken);
+  const cautions=$("#fCaution").value.split(/[\n／]/).map(s=>s.trim()).filter(Boolean);   // 改行または全角／で区切る（半角/は本文として残す）
   const base={name,cat:$("#fCat").value,place:$("#fPlace").value.trim(),time:$("#fTime").value.trim(),photo:formPhoto,tools,cautions,steps};
   let saved;
   if(editingId){
@@ -1238,6 +1417,7 @@ async function saveDish(){
 /* 設定への入口・画面常時オントグル */
 $("#settingsBtn").addEventListener("click",openSettings);
 $("#wakeToggle").addEventListener("click",()=>setWake(!wakeOn));
+$("#darkToggle").addEventListener("click",()=>setDark(!darkOn));
 document.addEventListener("visibilitychange",()=>{   // ON中にタブ復帰したら取り直し
   if(wakeOn && !wl && document.visibilityState==="visible") acquireWake();
 });
@@ -1326,12 +1506,16 @@ async function boot(){
     if(Array.isArray(savedCats)&&savedCats.length) cats=savedCats;
     else await metaSet("cats",cats);
     _iosHintSeen=!!(await metaGet("iosHintSeen"));
+    const savedTheme=await metaGet("theme");                // 明示設定があれば優先。無ければOS設定に従う
+    if(savedTheme==="dark"||savedTheme==="light") darkOn=(savedTheme==="dark");
+    else darkOn=!!(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);
+    applyTheme();
   }catch(e){
     console.error("DB初期化に失敗:",e);
     toast("保存領域を開けませんでした（今回はメモリ動作）");
     items=SAMPLE.map(normalize); // フォールバック：メモリのみ
   }
-  if(!_hintSeen) $("#gearHint").classList.remove("hide");   // 初回ヒント（設定を一度開くまで）
+  if(!_hintSeen) showGearHint();                            // 初回ヒント（最初の操作/5秒/設定オープンで消え、以後出ない）
   maybeShowIosHint();                                       // iOSのホーム画面追加案内（一度きり）
   renderChips();renderGrid();
 }
