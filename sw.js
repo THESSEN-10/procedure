@@ -1,12 +1,11 @@
 /* 手順帳 Service Worker：アプリシェルをキャッシュして完全オフライン動作。
    ※ユーザーデータはIndexedDB（SWキャッシュとは別領域）に保存され、ここでは一切扱わない。
    更新時はCACHEのバージョンを上げる。 */
-const CACHE = "tejun-cho-v6";
+const CACHE = "tejun-cho-v7";
 const SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./fonts/roboto-mono-latin.woff2",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-maskable-512.png",

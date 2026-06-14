@@ -14,8 +14,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="手順帳">
 <style>
-  /* 等幅のみ自前ホスト（Latin・可変woff2 32KB／OFL）。和文は同梱せずシステムフォント */
-  @font-face{font-family:"Roboto Mono";font-style:normal;font-weight:500 700;font-display:swap;src:url("fonts/roboto-mono-latin.woff2") format("woff2")}
+  /* 等幅はシステムフォントにフォールバック（フォントは同梱しない＝ライセンス義務なし）。
+     既存の font-family:"Roboto Mono",monospace 指定は、未バンドルでも末尾の monospace に落ちる */
   :root{
     --paper:#FAF7F1; --paper-2:#EFEADD; --card:#FFFFFF;
     --ink:#1E2330; --ink-soft:#56607A; --faint:#9A9BA8;
@@ -30,6 +30,14 @@
   button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
   img{display:block;max-width:100%}
   .app{max-width:1040px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+  /* 文字の大きさ：.app全体をzoom（モーダル/トースト/ライトボックスは.app外なので等倍＝座標安全） */
+  .set-fontrow{padding-top:14px;margin-top:14px;border-top:1px solid var(--line)}
+  .set-fontrow .st-label{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+  .set-fontrow .st-label b{font-size:15px;font-weight:700}
+  .set-fontrow .st-label .st-sub{font-size:12px;color:var(--ink-soft)}
+  .set-fontctl{display:flex;align-items:center;gap:10px}
+  .set-fontctl input[type=range]{flex:1}
+  .set-fontval{flex:none;min-width:46px;text-align:right;font-weight:700;font-family:"Roboto Mono",monospace}
 
   /* header */
   header.bar{position:sticky;top:0;z-index:30;background:var(--paper);
@@ -51,6 +59,8 @@
   .search{flex:1;min-width:200px;display:flex;align-items:center;gap:9px;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px}
   .search input{border:none;background:none;outline:none;font-size:16px;width:100%;font-family:inherit;color:var(--ink)}  /* iOSの自動ズーム防止に16px以上を維持 */
   .search .ic{color:var(--faint);font-size:16px}
+  .search-clear{flex:none;width:26px;height:26px;border-radius:50%;background:var(--paper-2);color:var(--ink-soft);font-size:17px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center}
+  .search-clear:active{transform:translateY(1px)}
   .add{background:var(--indigo);color:#fff;font-weight:700;font-size:15px;padding:13px 18px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 0 var(--indigo-deep)}
   .add:active{transform:translateY(1px);box-shadow:0 1px 0 var(--indigo-deep)}
   .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
@@ -143,6 +153,10 @@
   .lightbox{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
   .lightbox img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
   .lb-close{position:absolute;top:14px;right:16px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-size:26px;line-height:1;display:flex;align-items:center;justify-content:center}
+  /* 情報モーダル（プライバシー／免責／ライセンス） */
+  .info-modal{max-width:520px}
+  .info-body{font-size:14px;line-height:1.7;color:var(--ink-soft);max-height:60vh;overflow:auto;white-space:pre-line;margin-bottom:18px}
+  .info-body b{color:var(--ink)}
   .step.done .txt{color:var(--faint)}
 
   /* completion / やったこと */
@@ -413,7 +427,7 @@
       <!-- バックアップ・リマインダー（条件付きで表示。データ保全を埋もれさせない） -->
       <div class="reminder hide" id="reminder"></div>
       <div class="toolbar">
-        <div class="search"><span class="ic">⌕</span><input id="q" type="text" placeholder="手順を探す（例：そうじ）"></div>
+        <div class="search"><span class="ic">⌕</span><input id="q" type="text" placeholder="手順を探す（例：そうじ）" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"><button class="search-clear hide" id="qClear" type="button" aria-label="検索をクリア">×</button></div>
         <button class="add" type="button" onclick="openForm()">＋ 新しい手順</button>
       </div>
       <div class="chips" id="chips"></div>
@@ -531,6 +545,15 @@
             <span class="st-label"><b>ダークモード</b><span class="st-sub">暗い配色にします。有機EL画面では電池の節約にもなります</span></span>
             <span class="switch"><span class="knob"></span></span>
           </button>
+          <div class="set-fontrow">
+            <div class="st-label"><b>文字の大きさ</b><span class="st-sub">スライドで調整します（基準は100%）</span></div>
+            <div class="set-fontctl">
+              <span class="crop-zoom-ic" aria-hidden="true">小</span>
+              <input type="range" id="fontRange" min="100" max="150" step="5" value="100" aria-label="文字の大きさ">
+              <span class="crop-zoom-ic" aria-hidden="true">大</span>
+              <span class="set-fontval" id="fontVal">100%</span>
+            </div>
+          </div>
         </div>
 
         <div class="set-sec">
@@ -542,6 +565,7 @@
           </div>
           <input type="file" id="importFile" accept="application/json,.json" style="display:none">
           <p class="set-backup-status" id="backupStatus"></p>
+          <p class="set-backup-status" id="storageStatus"></p>
         </div>
 
         <div class="set-sec">
@@ -555,6 +579,15 @@
         </div>
 
         <div class="set-sec">
+          <div class="set-sec-h">アプリについて</div>
+          <div class="set-btns">
+            <button class="dz-btn" type="button" id="btnPrivacy">プライバシーポリシー</button>
+            <button class="dz-btn" type="button" id="btnTerms">免責事項・注意</button>
+            <button class="dz-btn" type="button" id="btnLicense">ライセンス情報</button>
+          </div>
+        </div>
+
+        <div class="set-sec">
           <div class="set-sec-h">データの初期化</div>
           <p class="set-note">すべての手順・写真・記録・設定を消して、最初の状態（サンプルのみ）に戻します。元に戻せません。先に「全データを書き出す」でバックアップすることを強くおすすめします。</p>
           <button class="btn-del-item" type="button" id="btnReset">データを初期化する</button>
@@ -564,6 +597,15 @@
   </main>
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- 情報表示（プライバシー／免責／ライセンス） -->
+<div class="modal-ov hide" id="infoOv">
+  <div class="modal info-modal" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+    <h2 id="infoTitle"></h2>
+    <div class="info-body" id="infoBody"></div>
+    <div class="modal-actions"><button class="btn-ok" id="infoClose" type="button">閉じる</button></div>
+  </div>
+</div>
 
 <!-- 手順写真の全画面表示（ライトボックス） -->
 <div class="lightbox hide" id="lightbox" role="dialog" aria-modal="true" aria-label="写真">
@@ -629,7 +671,7 @@ const SAMPLE = [
 ];
 let items = [];
 let activeCat="すべて", editingId=null, formPhoto=null, tier="free";
-let _lastBackupAt=null, _hintSeen=false, wakeOn=false, darkOn=false;   // 設定/バックアップ状態（meta連動・ランタイムキャッシュ）
+let _lastBackupAt=null, _hintSeen=false, wakeOn=false, darkOn=false, fontScale=100;   // 設定/バックアップ状態（meta連動・ランタイムキャッシュ）
 let _iosHintSeen=false, _deferredPrompt=null;            // PWA：iOS追加案内の既読／Androidインストール保留プロンプト
 const CATS_DEFAULT=["料理","掃除","園芸","工作","その他"];
 let cats=[...CATS_DEFAULT];        // 実カテゴリ（順序付き）。「すべて」は実体でなくUIフィルタなので含めない
@@ -891,16 +933,21 @@ async function deleteItem(id){
   if(!d)return;
   const ok=await showConfirm({
     title:"手順を削除",
-    body:`『${d.name}』を削除しますか？\n元に戻せません。`,
+    body:`『${d.name}』を削除しますか？`,
     okLabel:"削除する", danger:true
   });
   if(!ok)return;
   try{ await req(store("items","readwrite").delete(id)); }
   catch(e){ toast("削除に失敗しました"); return; }
+  const snapshot=d;                         // 写真・記録ごと丸ごと退避（Undo用）
   items=items.filter(x=>x.id!==id);
   show("list"); renderGrid();
   history.replaceState({v:"list"},"");   // 編集履歴を一覧に置換（戻るで削除済み詳細に戻らない）
-  toast("削除しました");
+  toast("削除しました",{actionLabel:"元に戻す",action:async()=>{   // しばらくの間だけ元に戻せる
+    try{ await itemPut(snapshot); }catch(e){ toast("復元に失敗しました"); return; }
+    if(!items.some(x=>x.id===snapshot.id)){ items.push(snapshot); resortItems(); }
+    renderGrid(); toast("元に戻しました");
+  }});
 }
 
 /* ===== エクスポート / インポート / 共有 ===== */
@@ -997,7 +1044,20 @@ function renderSettings(){
   if(bs) bs.textContent=_lastBackupAt?`前回バックアップ：${daysSince(_lastBackupAt)}日前（${_lastBackupAt.slice(0,10)}）`:"まだ書き出していません";
   updateWakeToggleUI();
   applyTheme();          // ダークモードのトグル表示を同期
+  applyFont();           // 文字サイズのトグル表示を同期
+  updateStorageStatus();
   renderCatManager();
+}
+
+/* ストレージ使用量（概算）。非対応なら何も出さない */
+function updateStorageStatus(){
+  const el=$("#storageStatus"); if(!el)return;
+  if(navigator.storage&&navigator.storage.estimate){
+    navigator.storage.estimate().then(e=>{
+      const mb=(e.usage||0)/1048576;
+      el.textContent=`使用容量：約${mb<10?mb.toFixed(1):Math.round(mb)}MB`;
+    }).catch(()=>{ el.textContent=""; });
+  }else el.textContent="";
 }
 
 /* ダークモード：data-theme属性で:root変数を切り替え。OSのブラウザUI色(theme-color)も合わせる */
@@ -1009,6 +1069,14 @@ function applyTheme(){
   if(t){ t.classList.toggle("on",darkOn); t.setAttribute("aria-checked",darkOn?"true":"false"); }
 }
 async function setDark(on){ darkOn=on; applyTheme(); try{ await metaSet("theme",on?"dark":"light"); }catch(e){} }
+
+/* 文字の大きさ：.appをzoomで拡大（基準100%）。モーダル/トースト/ライトボックスは.app外なので等倍＝トリミング座標も安全 */
+function applyFont(){
+  const a=document.querySelector(".app"); if(a) a.style.zoom = fontScale===100 ? "" : String(fontScale/100);
+  const r=$("#fontRange"); if(r) r.value=String(fontScale);
+  const v=$("#fontVal"); if(v) v.textContent=fontScale+"%";
+}
+async function setFont(scale){ fontScale=Math.min(150,Math.max(100,Math.round(scale/5)*5)); applyFont(); try{ await metaSet("fontScale",fontScale); }catch(e){} }
 
 /* 画面を常にオン（Wake Lock）。トグルON中はタブ復帰で取り直し（best-effort）。
    リロードでは自動再取得しない（wakeOnは初期false＝ユーザー操作起点を守る） */
@@ -1504,11 +1572,16 @@ $("#homeBtn").addEventListener("click",goHome);
 $("#settingsBtn").addEventListener("click",openSettings);
 $("#wakeToggle").addEventListener("click",()=>setWake(!wakeOn));
 $("#darkToggle").addEventListener("click",()=>setDark(!darkOn));
+$("#fontRange").addEventListener("input",e=>{ fontScale=Math.min(150,Math.max(100,parseInt(e.target.value,10)||100)); applyFont(); });   // ドラッグ中は即反映
+$("#fontRange").addEventListener("change",e=>{ setFont(parseInt(e.target.value,10)); });   // 確定時に保存
 document.addEventListener("visibilitychange",()=>{   // ON中にタブ復帰したら取り直し
   if(wakeOn && !wl && document.visibilityState==="visible") acquireWake();
 });
 
-$("#q").addEventListener("input",renderGrid);
+/* 検索：入力でクリア(×)ボタンの出し入れ＋一覧更新。×で全消去 */
+function updateQClear(){ $("#qClear").classList.toggle("hide", !$("#q").value); }
+$("#q").addEventListener("input",()=>{ updateQClear(); renderGrid(); });
+$("#qClear").addEventListener("click",()=>{ $("#q").value=""; updateQClear(); renderGrid(); $("#q").focus(); });
 
 /* データゾーン：書き出し／取り込み */
 $("#btnExportAll").addEventListener("click",exportAll);
@@ -1545,6 +1618,63 @@ async function factoryReset(){
   location.reload();   // 再読み込みでboot→未seedと判定→サンプルを再投入
 }
 $("#btnReset").addEventListener("click",factoryReset);
+
+/* ===== アプリについて（プライバシー／免責／ライセンス） ===== */
+const INFO_PRIVACY=`「手順帳」は、お客様のプライバシーを最大限に尊重して設計されています。
+
+■ 保存される情報
+入力された手順・写真・実施記録・設定は、お使いの端末内（ブラウザのIndexedDB）にのみ保存されます。これらがサーバーや開発者、第三者に送信・収集されることは一切ありません。
+
+■ トラッキング・広告
+アクセス解析・広告・行動追跡（Cookie等によるトラッキング）は一切行いません。
+
+■ データの書き出し・共有
+「全データを書き出す」やファイル共有は、お客様の操作時のみ実行されます。書き出したファイル（写真を含む）の保管・送付先の管理は、お客様ご自身に委ねられます。
+
+■ 写真について
+追加した写真は保存時に変換され、位置情報（GPS）などの撮影メタデータ（EXIF）は取り除かれます。
+
+■ データの保存と消去
+データは端末内に保存されます。ブラウザのサイトデータ削除、または設定の「データを初期化」で消去されます。大切なデータは定期的に書き出して保管してください。
+
+■ お問い合わせ
+本ポリシーに関するお問い合わせは［連絡先を記載してください］まで。
+
+最終更新：2026-06-14`;
+const INFO_TERMS=`■ 本アプリの位置づけ
+「手順帳」は、手順を記録・閲覧するためのメモツールです。
+
+■ 内容の責任
+登録・表示される手順や注意書きの正確性・安全性・適法性について、開発者は保証しません。内容はお客様自身が作成・管理するものです。
+
+■ 安全について
+料理（火・刃物・加熱）、工作（刃物・工具）、園芸（薬剤等）など危険を伴う作業は、お客様ご自身の責任と判断で、十分に注意して行ってください。
+
+■ 免責
+本アプリの利用または利用不能、データの消失等によって生じたいかなる損害についても、開発者は責任を負いません。
+
+■ バックアップのお願い
+データは端末内にのみ保存され、端末の故障・買い替え・ブラウザデータ削除等で失われる可能性があります。「全データを書き出す」で定期的にバックアップしてください。
+
+最終更新：2026-06-14`;
+const INFO_LICENSE=`■ 本アプリ
+© 2026 ［開発者名を記載してください］
+
+■ 外部ソフトウェア
+本アプリは外部ライブラリや同梱フォントを使用していません。等幅の表示にはお使いの端末のフォントを利用します。
+
+■ サンプルの写真
+初期サンプル（肉じゃが など）の写真は生成AI（Google Gemini）で作成したものです。`;
+function openInfo(title,body){
+  $("#infoTitle").textContent=title; $("#infoBody").textContent=body;
+  $("#infoOv").classList.remove("hide"); document.body.classList.add("noscroll");
+}
+function closeInfo(){ $("#infoOv").classList.add("hide"); document.body.classList.remove("noscroll"); }
+$("#btnPrivacy").addEventListener("click",()=>openInfo("プライバシーポリシー",INFO_PRIVACY));
+$("#btnTerms").addEventListener("click",()=>openInfo("免責事項・利用上の注意",INFO_TERMS));
+$("#btnLicense").addEventListener("click",()=>openInfo("ライセンス情報",INFO_LICENSE));
+$("#infoClose").addEventListener("click",closeInfo);
+$("#infoOv").addEventListener("mousedown",e=>{ if(e.target===$("#infoOv")) closeInfo(); });
 
 /* 戻る/進む（マウスの戻るボタン含む）で画面遷移。履歴stateが画面の真実 */
 window.addEventListener("popstate",e=>{
@@ -1622,6 +1752,10 @@ async function boot(){
     if(savedTheme==="dark"||savedTheme==="light") darkOn=(savedTheme==="dark");
     else darkOn=!!(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);
     applyTheme();
+    const fs=await metaGet("fontScale");                    // 文字サイズ（基準100%）。旧bigFontからは115%へ移行
+    if(typeof fs==="number") fontScale=Math.min(150,Math.max(100,fs));
+    else if(await metaGet("bigFont")) fontScale=115;
+    applyFont();
   }catch(e){
     console.error("DB初期化に失敗:",e);
     toast("保存領域を開けませんでした（今回はメモリ動作）");
