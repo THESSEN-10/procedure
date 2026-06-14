@@ -677,6 +677,14 @@ const CATS_DEFAULT=["料理","掃除","園芸","工作","その他"];
 let cats=[...CATS_DEFAULT];        // 実カテゴリ（順序付き）。「すべて」は実体でなくUIフィルタなので含めない
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+/* 写真の表示URL：旧base64文字列はそのまま、BlobはobjectURL化して要素にキャッシュ（再描画で再利用） */
+function photoURL(o){
+  if(!o||!o.photo) return "";
+  if(typeof o.photo==="string") return o.photo;       // 旧base64 / サンプル
+  if(!o._url) o._url=URL.createObjectURL(o.photo);     // Blob→URLは1回だけ
+  return o._url;
+}
+const blobToDataURL=blob=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(blob);});
 
 /* ===== IndexedDB 永続化層 ===== */
 const DB_NAME="tejun-cho-db", DB_VER=1;
@@ -697,13 +705,20 @@ function store(name,mode){return _db.transaction(name,mode).objectStore(name);}
 function req(r){return new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
 const metaGet=k=>req(store("meta","readonly").get(k)).then(r=>r?r.value:undefined);
 const metaSet=(k,v)=>req(store("meta","readwrite").put({key:k,value:v}));
-const itemPut=o=>req(store("items","readwrite").put(o));
+/* 保存前に実行時フィールド（表示用objectURLキャッシュ _url/_purl）を除去。
+   これらをDBに書くと再読込時に無効なblob:URLが残り画像が壊れるため必須。写真本体(Blob/文字列)は保持。 */
+function stripRuntime(o){
+  const c={...o}; delete c._url; delete c._purl;
+  if(Array.isArray(c.steps)) c.steps=c.steps.map(s=>{ const t={...s}; delete t._url; delete t._purl; return t; });
+  return c;
+}
+const itemPut=o=>req(store("items","readwrite").put(stripRuntime(o)));
 const itemsAll=()=>req(store("items","readonly").getAll());
 /* 全置換を1トランザクションで原子的に（clear→put）。途中失敗で半壊しない */
 function replaceAllItems(list){
   return new Promise((res,rej)=>{
     const tx=_db.transaction("items","readwrite"), os=tx.objectStore("items");
-    os.clear(); list.forEach(o=>os.put(o));
+    os.clear(); list.forEach(o=>os.put(stripRuntime(o)));
     tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error);
   });
 }
@@ -826,7 +841,7 @@ function renderGrid(){
   if(!list.length){$("#grid").innerHTML=`<div style="grid-column:1/-1;padding:48px 0;text-align:center;color:var(--faint)">該当なし。「＋ 新しい手順」から追加できます。</div>`;return}
   $("#grid").innerHTML=list.map(d=>{
     const thumb=d.photo
-      ?`<div class="thumb"><img src="${d.photo}" alt=""></div>`
+      ?`<div class="thumb"><img src="${photoURL(d)}" alt=""></div>`
       :`<div class="thumb noimg"><span class="ic" aria-hidden="true">📷</span></div>`;
     const last=d.log&&d.log.length?`<span class="tag done">✓ ${esc(d.log[d.log.length-1])}</span>`:"";
     return `<button class="card-item" type="button" onclick="openDetail(${d.id})">
@@ -849,7 +864,7 @@ function renderDetail(id){ // 履歴を触らずに詳細を描画
 }
 function openDetail(id){ renderDetail(id); history.pushState({v:"detail",id},""); } // 前進：履歴を積む
 function paintDetail(d){
-  const photo=d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph"><span class="cam">📷</span><span style="font-family:'Roboto Mono',monospace;font-size:12px">写真 未登録</span></div>`;
+  const photo=d.photo?`<img src="${photoURL(d)}" alt="">`:`<div class="ph"><span class="cam">📷</span><span style="font-family:'Roboto Mono',monospace;font-size:12px">写真 未登録</span></div>`;
   const caution=d.cautions.length?`<div class="caution"><div class="lbl">注意・コツ</div><ul>${d.cautions.map(c=>`<li>${fmt(c)}</li>`).join("")}</ul></div>`:"";
   const tools=d.tools&&d.tools.length?`<div class="tools"><span class="lbl">用意するもの</span>${d.tools.map(t=>`<span class="toolchip">${esc(t)}</span>`).join("")}</div>`:"";
   const done=viewState.checked.filter(Boolean).length;
@@ -858,7 +873,7 @@ function paintDetail(d){
       <button class="check" type="button" onclick="toggleStep(${i})">✓</button>
       <div class="n">${i+1}</div>
       <div class="txt">${fmt(s.body)}</div>
-      ${s.photo?`<button class="step-thumb" type="button" onclick="openLightbox(${i})" aria-label="写真を拡大"><img src="${s.photo}" alt=""></button>`:""}
+      ${s.photo?`<button class="step-thumb" type="button" onclick="openLightbox(${i})" aria-label="写真を拡大"><img src="${photoURL(s)}" alt=""></button>`:""}
     </div>`).join("");
   const logHtml=d.log&&d.log.length
     ?`前回 <b>${esc(d.log[d.log.length-1])}</b>・通算 <b>${d.log.length}</b>回`
@@ -889,7 +904,7 @@ function paintDetail(d){
 function openLightbox(i){
   const d=items.find(x=>x.id===viewState.id); if(!d)return;
   const s=d.steps[i]; if(!s||!s.photo)return;
-  $("#lightboxImg").src=s.photo;
+  $("#lightboxImg").src=photoURL(s);
   $("#lightbox").classList.remove("hide"); document.body.classList.add("noscroll");
 }
 function closeLightbox(){ $("#lightbox").classList.add("hide"); document.body.classList.remove("noscroll"); $("#lightboxImg").src=""; }
@@ -918,7 +933,7 @@ async function duplicateItem(id){
   const copy=normalize({
     ...src, id:nid, name:src.name+"のコピー",
     tools:[...(src.tools||[])], cautions:[...(src.cautions||[])],
-    steps:(src.steps||[]).map(s=>({...s})), extra:{...(src.extra||{})},
+    steps:(src.steps||[]).map(s=>{const c={...s};delete c._url;delete c._purl;return c;}), extra:{...(src.extra||{})},
     log:[], createdAt:undefined, updatedAt:undefined,   // normalizeで現在時刻が入る
     order:maxOrder()+1                                   // 複製は末尾へ
   });
@@ -958,6 +973,14 @@ function safeName(s){return (s||"").replace(/[\\/:*?"<>|\s]+/g,"_").replace(/^_+
 function buildEnvelope(kind,list){
   return JSON.stringify({app:"tejun-cho",schema:1,kind,exportedAt:new Date().toISOString(),items:list});
 }
+/* 書き出し用に変換：写真がBlobならbase64へ（JSONは従来どおりbase64同梱で互換）。実行時フィールドは除去 */
+async function toExportItem(it){
+  const o=stripRuntime(it);
+  if(o.photo instanceof Blob) o.photo=await blobToDataURL(o.photo);
+  o.steps=await Promise.all((o.steps||[]).map(async s=>{ if(s.photo instanceof Blob) s={...s,photo:await blobToDataURL(s.photo)}; return s; }));
+  return o;
+}
+async function itemsToExportable(list){ return Promise.all(list.map(toExportItem)); }
 
 /* Web Shareでファイル共有。canShareで機能検出→非対応はダウンロードにフォールバック */
 /* 戻り値: 共有完了/ダウンロード=true、共有シートのキャンセル=false */
@@ -977,7 +1000,8 @@ async function shareOrDownload(json,filename){
 
 async function exportAll(){
   if(!items.length){toast("書き出すデータがありません");return}
-  const ok=await shareOrDownload(buildEnvelope("full",items),`tejun-cho-backup-${ymd(new Date())}.json`);
+  const list=await itemsToExportable(items);          // Blob写真をbase64へ変換（互換）
+  const ok=await shareOrDownload(buildEnvelope("full",list),`tejun-cho-backup-${ymd(new Date())}.json`);
   if(!ok) return;                                     // 共有キャンセル時はバックアップ済み扱いにしない
   _lastBackupAt=new Date().toISOString();
   await metaSet("lastBackupAt",_lastBackupAt);
@@ -986,7 +1010,8 @@ async function exportAll(){
 }
 async function exportItem(id){
   const it=items.find(x=>x.id===id); if(!it)return;
-  await shareOrDownload(buildEnvelope("item",[it]),`tejun-cho-${safeName(it.name)}.json`);
+  const list=await itemsToExportable([it]);
+  await shareOrDownload(buildEnvelope("item",list),`tejun-cho-${safeName(it.name)}.json`);
 }
 
 /* ===== 設定 / バックアップ・リマインダー / 画面常時オン ===== */
@@ -1239,7 +1264,7 @@ async function importReplaceAll(list){
     let k=0; incoming.forEach(x=>{x.id=++k;});
   }
   const newLastId=incoming.reduce((m,x)=>Math.max(m,x.id),0);
-  const snapshot={items:items.map(x=>({...x})),lastId:_lastId,at:new Date().toISOString()};
+  const snapshot={items:items.map(stripRuntime),lastId:_lastId,at:new Date().toISOString()};
   const ok=await showConfirm({
     title:"全データを置き換え",
     body:`ファイルの内容で全て置き換えます。\n今ある${items.length}件は消え、${incoming.length}件になります。\n置き換え後に「元に戻す」で戻せます。`,
@@ -1306,11 +1331,13 @@ function renumber(){[...$("#stepList").querySelectorAll(".steprow .sn")].forEach
 /* 手順写真コントロール：無ければ📷、あればサムネ（タップで調整／×で削除） */
 function renderStepPhoto(row){
   const box=row.querySelector(".stepphoto");
+  if(row._purl){ URL.revokeObjectURL(row._purl); row._purl=null; }   // 前の表示URLを破棄
   if(row._photo){
-    box.innerHTML=`<button type="button" class="sp-thumb" title="写真を調整"><img src="${row._photo}" alt=""><span class="sp-del" title="写真を削除">×</span></button>`;
+    const url=(typeof row._photo==="string")?row._photo:(row._purl=URL.createObjectURL(row._photo));
+    box.innerHTML=`<button type="button" class="sp-thumb" title="写真を調整"><img src="${url}" alt=""><span class="sp-del" title="写真を削除">×</span></button>`;
     box.querySelector(".sp-thumb").onclick=e=>{
       if(e.target.classList.contains("sp-del")){ e.stopPropagation(); row._photo=null; renderStepPhoto(row); return; }
-      openCropper(row._photo,false,url=>{ row._photo=url; renderStepPhoto(row); });
+      openCropper(row._photo,blob=>{ row._photo=blob; renderStepPhoto(row); });   // Blob/旧文字列どちらも可
     };
   }else{
     box.innerHTML=`<button type="button" class="sp-add" title="写真を追加" aria-label="この手順に写真を追加">📷</button>`;
@@ -1402,8 +1429,11 @@ function makeReorderable(listEl,{handleSelector=".grip",itemSelector=".steprow",
     handle.addEventListener("pointercancel",onUp);
   });
 }
-function resetDrop(){$("#drop").querySelector("img")?.remove();$("#drop").classList.remove("has-photo");$("#dropIcon").style.display="";$("#dropTxt").textContent="タップして写真を選ぶ";$("#dropDel").classList.add("hide");$("#dropEdit").classList.add("hide")}
-function fillDrop(src){resetDrop();const img=document.createElement("img");img.src=src;$("#drop").appendChild(img);$("#drop").classList.add("has-photo");$("#dropIcon").style.display="none";$("#dropTxt").textContent="";$("#dropDel").classList.remove("hide");$("#dropEdit").classList.remove("hide")}
+let _dropURL=null;
+function resetDrop(){ if(_dropURL){URL.revokeObjectURL(_dropURL);_dropURL=null;} $("#drop").querySelector("img")?.remove();$("#drop").classList.remove("has-photo");$("#dropIcon").style.display="";$("#dropTxt").textContent="タップして写真を選ぶ";$("#dropDel").classList.add("hide");$("#dropEdit").classList.add("hide")}
+function fillDrop(src){resetDrop();const img=document.createElement("img");img.src=(src instanceof Blob)?(_dropURL=URL.createObjectURL(src)):src;$("#drop").appendChild(img);$("#drop").classList.add("has-photo");$("#dropIcon").style.display="none";$("#dropTxt").textContent="";$("#dropDel").classList.remove("hide");$("#dropEdit").classList.remove("hide")}
+/* 写真のobjectURLキャッシュを破棄（写真差し替え・削除時にメモリ解放） */
+function freePhotoURL(o){ if(o&&o._url){ URL.revokeObjectURL(o._url); o._url=null; } }
 
 /* ===== 写真トリミング（出力は4:3固定。ステージ＝出力範囲） =====
    倍率 ds（表示スケール）を fit（全体が収まる）〜 cover×4 で自由に調整。
@@ -1411,25 +1441,28 @@ function fillDrop(src){resetDrop();const img=document.createElement("img");img.s
    外部ライブラリなし。決定時にCanvasで合成し、長辺〜1280pxに縮小しJPEG85%で保持。 */
 let crop=null;
 /* onDone(dataUrl)：決定時の受け取り先。省略時はメイン写真へ。手順写真はrowへ渡す */
-function openCropper(srcUrl,isObjectURL,onDone){
-  const done=onDone||(url=>{ formPhoto=url; fillDrop(url); });
+/* source: File | Blob | 文字列(data URL)。onDone(blob) で結果を受け取る（既定はメイン写真へ） */
+function openCropper(source,onDone){
+  const done=onDone||(blob=>{ formPhoto=blob; fillDrop(blob); });
+  const owns=(source instanceof Blob);            // Blob/Fileは表示URLを生成→closeで破棄
+  const dispURL=owns?URL.createObjectURL(source):source;
   document.documentElement.style.zoom="";   // トリミング中はルートを等倍に（座標計算保護）。closeで復元
   const img=new Image();
   img.onload=()=>{
     $("#cropOv").classList.remove("hide"); document.body.classList.add("noscroll");
     const stage=$("#cropStage");
     const SW=stage.clientWidth, SH=stage.clientHeight;
-    if(!SW||!SH){ toast("画面の準備に失敗しました"); $("#cropOv").classList.add("hide"); document.body.classList.remove("noscroll"); applyFont(); if(isObjectURL)URL.revokeObjectURL(srcUrl); return; }
+    if(!SW||!SH){ toast("画面の準備に失敗しました"); $("#cropOv").classList.add("hide"); document.body.classList.remove("noscroll"); applyFont(); if(owns)URL.revokeObjectURL(dispURL); return; }
     const nw=img.naturalWidth, nh=img.naturalHeight;
     const fit=Math.min(SW/nw,SH/nh);           // 全体が枠に収まる倍率
     const cover=Math.max(SW/nw,SH/nh);         // 枠を隙間なく覆う倍率
-    crop={img,srcUrl,isObjectURL,SW,SH,nw,nh,fit,cover,ds:cover,tx:0,ty:0,onDone:done};   // 初期は覆う表示
-    $("#cropImg").src=srcUrl; $("#cropBg").src=srcUrl;
+    crop={img,dispURL,owns,SW,SH,nw,nh,fit,cover,ds:cover,tx:0,ty:0,onDone:done};   // 初期は覆う表示
+    $("#cropImg").src=dispURL; $("#cropBg").src=dispURL;
     const z=$("#cropZoom"); z.min=fit; z.max=cover*4; z.step=(cover*4-fit)/200||0.001; z.value=cover;
     centerCrop(); clampCrop(); applyCropTransform();
   };
-  img.onerror=()=>{ toast("画像を読み込めませんでした"); applyFont(); if(isObjectURL)URL.revokeObjectURL(srcUrl); };
-  img.src=srcUrl;
+  img.onerror=()=>{ toast("画像を読み込めませんでした"); applyFont(); if(owns)URL.revokeObjectURL(dispURL); };
+  img.src=dispURL;
 }
 function centerCrop(){ const c=crop; c.tx=(c.SW-c.nw*c.ds)/2; c.ty=(c.SH-c.nh*c.ds)/2; }
 /* 軸ごとに：枠より大きければはみ出しを抑え、小さければ中央寄せ（余白＝ぼかしで埋める） */
@@ -1441,11 +1474,11 @@ function clampCrop(){
 function applyCropTransform(){ const c=crop, ci=$("#cropImg"); ci.style.width=(c.nw*c.ds)+"px"; ci.style.height=(c.nh*c.ds)+"px"; ci.style.left=c.tx+"px"; ci.style.top=c.ty+"px"; }
 function closeCropper(){
   $("#cropOv").classList.add("hide"); document.body.classList.remove("noscroll");
-  if(crop&&crop.isObjectURL)URL.revokeObjectURL(crop.srcUrl);
+  if(crop&&crop.owns)URL.revokeObjectURL(crop.dispURL);
   $("#cropImg").src=""; $("#cropBg").src=""; crop=null; $("#photoInput").value="";   // 同じ写真を選び直せるように
   applyFont();   // 文字サイズのzoomを復元
 }
-function cropToDataURL(){
+function cropToBlob(){
   const c=crop, ds=c.ds;
   let k=1/ds;                                  // 前景をほぼ原寸でレンダリングする出力倍率
   let outW=Math.round(c.SW*k), outH=Math.round(c.SH*k);
@@ -1459,20 +1492,20 @@ function cropToDataURL(){
   x.filter="none";
   // 前景：プレビューと同じ位置・倍率
   x.drawImage(c.img, c.tx*k, c.ty*k, c.nw*ds*k, c.nh*ds*k);
-  return cv.toDataURL("image/jpeg",0.85);
+  return new Promise(res=>cv.toBlob(b=>res(b),"image/jpeg",0.85));   // Blobで返す（IDBに効率よく保存）
 }
-/* ファイル選択→トリミングへ */
+/* ファイル選択→トリミングへ（File/Blob/旧base64文字列のいずれも可） */
 $("#photoInput").addEventListener("change",e=>{
   const f=e.target.files[0]; if(!f)return;
-  openCropper(URL.createObjectURL(f),true);
+  openCropper(f);
 });
 /* 既存写真を「調整」で再トリミング */
-$("#dropEdit").addEventListener("click",e=>{ e.preventDefault(); e.stopPropagation(); if(formPhoto) openCropper(formPhoto,false); });
+$("#dropEdit").addEventListener("click",e=>{ e.preventDefault(); e.stopPropagation(); if(formPhoto) openCropper(formPhoto); });
 /* 手順写真：ファイル選択→トリミング→その手順行へ反映 */
 $("#stepPhotoInput").addEventListener("change",e=>{
   const f=e.target.files[0]; e.target.value=""; if(!f||!_pendingStepRow)return;
   const row=_pendingStepRow; _pendingStepRow=null;
-  openCropper(URL.createObjectURL(f),true,url=>{ row._photo=url; renderStepPhoto(row); });
+  openCropper(f,blob=>{ row._photo=blob; renderStepPhoto(row); });
 });
 /* スライダー：ステージ中心を固定して倍率変更 */
 $("#cropZoom").addEventListener("input",e=>{
@@ -1497,8 +1530,11 @@ $("#cropFit").addEventListener("click",()=>{
 })();
 $("#cropOk").addEventListener("click",()=>{
   if(!crop)return;
-  let url; try{ url=cropToDataURL(); }catch(err){ toast("画像の処理に失敗しました"); return; }
-  const done=crop.onDone; closeCropper(); if(done)done(url);   // 受け取り先（メイン写真 or 手順写真）へ
+  const done=crop.onDone;
+  cropToBlob().then(blob=>{
+    if(!blob){ toast("画像の処理に失敗しました"); return; }
+    closeCropper(); if(done)done(blob);   // 受け取り先（メイン写真 or 手順写真）へ。結果はBlob
+  }).catch(()=>toast("画像の処理に失敗しました"));
 });
 $("#cropCancel").addEventListener("click",closeCropper);
 $("#cropOv").addEventListener("mousedown",e=>{ if(e.target===$("#cropOv")) closeCropper(); });
@@ -1551,7 +1587,7 @@ async function saveDish(){
   if(editingId){
     const d=items.find(x=>x.id===editingId);
     saved=normalize({...d,...base,log:d.log||[],updatedAt:new Date().toISOString()});
-    Object.assign(d,saved);
+    Object.assign(d,saved); freePhotoURL(d);   // 写真差し替え時に古い表示URLを破棄→次の描画で再生成
   }else{
     const id=await nextId();
     saved=normalize({...base,id,log:[],order:maxOrder()+1});  // 新規は末尾へ
