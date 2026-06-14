@@ -5,7 +5,8 @@
 node_modules/
 
 # サンプル写真の元ファイル（index.htmlにbase64で内包済み。元PNGは重いので除外）
-nikujaga.png
+# ルート直下の画像のみ対象。アプリで使う icons/*.png は対象外（サブフォルダなので除外されない）
+/*.png
 
 # OS・エディタ
 .DS_Store
