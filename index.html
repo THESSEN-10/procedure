@@ -4,8 +4,8 @@
      データはメモリ保持のみ。本番はこの配列を IndexedDB に差し替える。 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>手順帳 — STEP CARDS</title>
-<!-- PWA：完全オフライン・外部依存なし。和文はシステムフォント、等幅のみ自前ホスト -->
+<title>手順帳</title>
+<!-- PWA：完全オフライン・外部依存なし。フォントは同梱せずシステムフォントを使用 -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2C4A78">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
@@ -409,7 +409,7 @@
 
 <div class="app">
   <header class="bar">
-    <button class="brand" type="button" id="homeBtn" aria-label="ホーム（一覧）へ"><span class="logo">手順<b>帳</b></span><span class="sub">STEP CARDS</span></button>
+    <button class="brand" type="button" id="homeBtn" aria-label="ホーム（一覧）へ"><span class="logo">手順<b>帳</b></span></button>
     <div class="gearwrap">
       <button class="gear" id="settingsBtn" type="button" aria-label="設定" title="設定">⚙️<span class="gear-txt">設定</span></button>
       <div class="gear-hint hide" id="gearHint">バックアップや画面設定はこちら</div>
@@ -1070,9 +1070,10 @@ function applyTheme(){
 }
 async function setDark(on){ darkOn=on; applyTheme(); try{ await metaSet("theme",on?"dark":"light"); }catch(e){} }
 
-/* 文字の大きさ：.appをzoomで拡大（基準100%）。モーダル/トースト/ライトボックスは.app外なので等倍＝トリミング座標も安全 */
+/* 文字の大きさ：ルート(html)をzoomで拡大（基準100%）。Safari/iPadはdiv+overflowへのzoomに不具合があるためルートに当てる。
+   トリミング中だけは座標計算保護のため一時的に等倍へ戻す（openCropper/closeCropper参照）。 */
 function applyFont(){
-  const a=document.querySelector(".app"); if(a) a.style.zoom = fontScale===100 ? "" : String(fontScale/100);
+  document.documentElement.style.zoom = fontScale===100 ? "" : String(fontScale/100);
   const r=$("#fontRange"); if(r) r.value=String(fontScale);
   const v=$("#fontVal"); if(v) v.textContent=fontScale+"%";
 }
@@ -1412,12 +1413,13 @@ let crop=null;
 /* onDone(dataUrl)：決定時の受け取り先。省略時はメイン写真へ。手順写真はrowへ渡す */
 function openCropper(srcUrl,isObjectURL,onDone){
   const done=onDone||(url=>{ formPhoto=url; fillDrop(url); });
+  document.documentElement.style.zoom="";   // トリミング中はルートを等倍に（座標計算保護）。closeで復元
   const img=new Image();
   img.onload=()=>{
     $("#cropOv").classList.remove("hide"); document.body.classList.add("noscroll");
     const stage=$("#cropStage");
     const SW=stage.clientWidth, SH=stage.clientHeight;
-    if(!SW||!SH){ toast("画面の準備に失敗しました"); $("#cropOv").classList.add("hide"); document.body.classList.remove("noscroll"); if(isObjectURL)URL.revokeObjectURL(srcUrl); return; }
+    if(!SW||!SH){ toast("画面の準備に失敗しました"); $("#cropOv").classList.add("hide"); document.body.classList.remove("noscroll"); applyFont(); if(isObjectURL)URL.revokeObjectURL(srcUrl); return; }
     const nw=img.naturalWidth, nh=img.naturalHeight;
     const fit=Math.min(SW/nw,SH/nh);           // 全体が枠に収まる倍率
     const cover=Math.max(SW/nw,SH/nh);         // 枠を隙間なく覆う倍率
@@ -1426,7 +1428,7 @@ function openCropper(srcUrl,isObjectURL,onDone){
     const z=$("#cropZoom"); z.min=fit; z.max=cover*4; z.step=(cover*4-fit)/200||0.001; z.value=cover;
     centerCrop(); clampCrop(); applyCropTransform();
   };
-  img.onerror=()=>{ toast("画像を読み込めませんでした"); if(isObjectURL)URL.revokeObjectURL(srcUrl); };
+  img.onerror=()=>{ toast("画像を読み込めませんでした"); applyFont(); if(isObjectURL)URL.revokeObjectURL(srcUrl); };
   img.src=srcUrl;
 }
 function centerCrop(){ const c=crop; c.tx=(c.SW-c.nw*c.ds)/2; c.ty=(c.SH-c.nh*c.ds)/2; }
@@ -1441,6 +1443,7 @@ function closeCropper(){
   $("#cropOv").classList.add("hide"); document.body.classList.remove("noscroll");
   if(crop&&crop.isObjectURL)URL.revokeObjectURL(crop.srcUrl);
   $("#cropImg").src=""; $("#cropBg").src=""; crop=null; $("#photoInput").value="";   // 同じ写真を選び直せるように
+  applyFont();   // 文字サイズのzoomを復元
 }
 function cropToDataURL(){
   const c=crop, ds=c.ds;
@@ -1637,9 +1640,6 @@ const INFO_PRIVACY=`「手順帳」は、お客様のプライバシーを最大
 ■ データの保存と消去
 データは端末内に保存されます。ブラウザのサイトデータ削除、または設定の「データを初期化」で消去されます。大切なデータは定期的に書き出して保管してください。
 
-■ お問い合わせ
-本ポリシーに関するお問い合わせは［連絡先を記載してください］まで。
-
 最終更新：2026-06-14`;
 const INFO_TERMS=`■ 本アプリの位置づけ
 「手順帳」は、手順を記録・閲覧するためのメモツールです。
@@ -1658,7 +1658,7 @@ const INFO_TERMS=`■ 本アプリの位置づけ
 
 最終更新：2026-06-14`;
 const INFO_LICENSE=`■ 本アプリ
-© 2026 ［開発者名を記載してください］
+© 2026 手順帳
 
 ■ 外部ソフトウェア
 本アプリは外部ライブラリや同梱フォントを使用していません。等幅の表示にはお使いの端末のフォントを利用します。
