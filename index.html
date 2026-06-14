@@ -527,6 +527,12 @@
             <button type="button" class="dz-btn" id="catAddBtn2">追加</button>
           </div>
         </div>
+
+        <div class="set-sec">
+          <div class="set-sec-h">データの初期化</div>
+          <p class="set-note">すべての手順・写真・記録・設定を消して、最初の状態（サンプルのみ）に戻します。元に戻せません。先に「全データを書き出す」でバックアップすることを強くおすすめします。</p>
+          <button class="btn-del-item" type="button" id="btnReset">データを初期化する</button>
+        </div>
       </div>
     </section>
   </main>
@@ -1433,6 +1439,32 @@ $("#importFile").addEventListener("change",async e=>{
   let text; try{ text=await f.text(); }catch(err){ toast("ファイルを読み取れませんでした"); return; }
   await handleImport(text);
 });
+
+/* データの初期化（破壊的・二重確認）。DBを削除→リロードで初期seed（サンプルのみ）に戻る。
+   IndexedDBごと消すため、手順・写真・記録・設定・カスタムタブも初期化される。 */
+async function factoryReset(){
+  const ok1=await showConfirm({
+    title:"データを初期化",
+    body:"あなたが追加した手順・写真・記録・設定をすべて消して、最初の状態（サンプルのみ）に戻します。\n元に戻せません。先に「全データを書き出す」でのバックアップを強くおすすめします。",
+    okLabel:"次へ", danger:true
+  });
+  if(!ok1)return;
+  const ok2=await showConfirm({
+    title:"本当に初期化しますか？",
+    body:"この操作は取り消せません。すべての手順・写真・記録が削除されます。",
+    okLabel:"初期化する", danger:true
+  });
+  if(!ok2)return;
+  try{
+    if(_db){ _db.close(); _db=null; }
+    await new Promise((res,rej)=>{
+      const r=indexedDB.deleteDatabase(DB_NAME);
+      r.onsuccess=res; r.onerror=()=>rej(r.error); r.onblocked=res;   // 単一画面前提。blockedでもclose済みなので続行
+    });
+  }catch(e){ toast("初期化に失敗しました"); try{ _db=await openDB(); }catch(_){} return; }
+  location.reload();   // 再読み込みでboot→未seedと判定→サンプルを再投入
+}
+$("#btnReset").addEventListener("click",factoryReset);
 
 /* 戻る/進む（マウスの戻るボタン含む）で画面遷移。履歴stateが画面の真実 */
 window.addEventListener("popstate",e=>{
