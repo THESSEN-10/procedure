@@ -1,7 +1,7 @@
 /* 手順帳 Service Worker：アプリシェルをキャッシュして完全オフライン動作。
    ※ユーザーデータはIndexedDB（SWキャッシュとは別領域）に保存され、ここでは一切扱わない。
    更新時はCACHEのバージョンを上げる。 */
-const CACHE = "tejun-cho-v3";
+const CACHE = "tejun-cho-v4";
 const SHELL = [
   "./",
   "./index.html",

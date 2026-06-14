@@ -94,12 +94,21 @@
   .edit-btn{font-size:14px;font-weight:700;color:var(--ink);padding:10px 16px;border:1.5px solid var(--line);border-radius:10px;background:var(--card)}
   .edit-btn.primary{background:var(--indigo);color:#fff;border-color:var(--indigo);box-shadow:0 2px 0 var(--indigo-deep)}
   .edit-btn.primary:active{transform:translateY(1px);box-shadow:0 1px 0 var(--indigo-deep)}
-  .hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:22px;align-items:start;margin-top:6px}
-  .hero .photo{aspect-ratio:4/3;border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow);background:var(--paper-2);position:relative}
-  .hero .photo img{width:100%;height:100%;object-fit:cover}
-  .hero .photo .stamp{position:absolute;bottom:10px;left:10px;background:rgba(30,35,48,.82);color:var(--paper);font-family:"Roboto Mono",monospace;font-size:11px;letter-spacing:.1em;padding:5px 10px;border-radius:7px}
-  .hero .photo .ph{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--faint);background:repeating-linear-gradient(135deg,#EDE7D8 0 14px,#E9E2D0 14px 28px)}
-  .hero .photo .ph .cam{font-size:34px;opacity:.5}
+  /* 詳細：手順ファースト。幅768px以上（iPhone横・iPad・PC）は2カラム＝左[写真+情報・固定] / 右[手順] */
+  .detail-grid{margin-top:6px}
+  .detail-left .photo{aspect-ratio:4/3;border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow);background:var(--paper-2);position:relative}
+  .detail-left .photo img{width:100%;height:100%;object-fit:cover}
+  .detail-left .photo .ph{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--faint);background:repeating-linear-gradient(135deg,#EDE7D8 0 14px,#E9E2D0 14px 28px)}
+  .detail-left .photo .ph .cam{font-size:34px;opacity:.5}
+  @media(max-width:767px){
+    .detail-left .photo{max-width:300px;margin:0 auto}   /* 縦：写真を抑えて手順を上へ（4:3は維持） */
+  }
+  @media(min-width:768px){
+    .detail-grid{display:grid;grid-template-columns:minmax(0,0.82fr) minmax(0,1.18fr);gap:24px;align-items:start}
+    .detail-left{position:sticky;top:14px}
+    .detail-left .photo{max-height:42vh}
+    .detail-right .steps-h{margin-top:0}
+  }
   .titleblock h1{font-size:33px;font-weight:900;letter-spacing:.01em;line-height:1.14}
   .titleblock .submeta{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0 16px}
 
@@ -288,7 +297,6 @@
   .hide{display:none !important}
 
   @media(max-width:680px){
-    .hero{grid-template-columns:1fr}
     .titleblock h1{font-size:27px}
     .row2{grid-template-columns:1fr}
     .brand .sub{display:none}
@@ -316,7 +324,7 @@
   [data-theme="dark"] .cat-del{color:#E0796E;border-color:#5A3A36}
   [data-theme="dark"] .btn-del-item{color:#E0796E;border-color:#5A3A36}
   [data-theme="dark"] .modal-actions .btn-ok.btn-danger{background:#B8463C;border-color:#9E2B22}
-  [data-theme="dark"] .hero .photo .ph{
+  [data-theme="dark"] .detail-left .photo .ph{
     background:repeating-linear-gradient(135deg,#23262F 0 12px,#1E212A 12px 24px)}
   [data-theme="dark"] .wake .dot{background:#5A6072}
   /* 設定：2つ目以降のトグルを区切る */
@@ -335,10 +343,11 @@
     .back,.detail-head,.finish,.printrow,.steps-h .prog{display:none !important}
 
     /* 写真：ページ幅に収め、高さを抑えて1ページに収まりやすく。未登録の枠は出さない */
-    .hero{display:block;margin:0 0 8mm}
-    .hero .photo{aspect-ratio:auto;border:none;background:none;box-shadow:none;border-radius:0;overflow:visible}
-    .hero .photo img{width:100%;height:auto;max-height:85mm;object-fit:contain;border:1px solid #999;border-radius:6px}
-    .hero .photo .stamp,.hero .photo .ph{display:none !important}
+    .detail-grid{display:block;margin:0}
+    .detail-left{position:static;margin:0 0 8mm}
+    .detail-left .photo{aspect-ratio:auto;border:none;background:none;box-shadow:none;border-radius:0;overflow:visible;max-height:none;width:auto}
+    .detail-left .photo img{width:100%;height:auto;max-height:85mm;object-fit:contain;border:1px solid #999;border-radius:6px}
+    .detail-left .photo .ph{display:none !important}
 
     .titleblock h1{font-size:24pt;color:#000;margin-bottom:6px}
     .titleblock .submeta{margin:6px 0 10px}
@@ -775,7 +784,7 @@ function renderDetail(id){ // 履歴を触らずに詳細を描画
 }
 function openDetail(id){ renderDetail(id); history.pushState({v:"detail",id},""); } // 前進：履歴を積む
 function paintDetail(d){
-  const photo=d.photo?`<img src="${d.photo}" alt=""><span class="stamp">仕上がり目安</span>`:`<div class="ph"><span class="cam">📷</span><span style="font-family:'Roboto Mono',monospace;font-size:12px">写真 未登録</span></div>`;
+  const photo=d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph"><span class="cam">📷</span><span style="font-family:'Roboto Mono',monospace;font-size:12px">写真 未登録</span></div>`;
   const caution=d.cautions.length?`<div class="caution"><div class="lbl">注意・コツ</div><ul>${d.cautions.map(c=>`<li>${fmt(c)}</li>`).join("")}</ul></div>`:"";
   const tools=d.tools&&d.tools.length?`<div class="tools"><span class="lbl">用意するもの</span>${d.tools.map(t=>`<span class="toolchip">${esc(t)}</span>`).join("")}</div>`:"";
   const done=viewState.checked.filter(Boolean).length;
@@ -790,21 +799,25 @@ function paintDetail(d){
     :`<span class="none">まだ記録なし</span>`;
   $("#detailBody").innerHTML=`
     <div class="detail-head"><button class="edit-btn" type="button" onclick="exportItem(${d.id})">共有</button><button class="edit-btn" type="button" onclick="duplicateItem(${d.id})">複製</button><button class="edit-btn primary" type="button" onclick="openForm(${d.id})">編集</button></div>
-    <div class="hero">
-      <div class="photo">${photo}</div>
-      <div class="titleblock">
-        <h1>${esc(d.name)}</h1>
-        <div class="submeta"><span class="tag">${esc(d.cat)}</span>${d.place?`<span class="tag">📍 ${esc(d.place)}</span>`:""}${d.time?`<span class="tag">⏱ ${esc(String(d.time))}分</span>`:""}</div>
-        ${caution}${tools}
+    <div class="detail-grid">
+      <div class="detail-left">
+        <div class="photo">${photo}</div>
+        <div class="titleblock">
+          <h1>${esc(d.name)}</h1>
+          <div class="submeta"><span class="tag">${esc(d.cat)}</span>${d.place?`<span class="tag">📍 ${esc(d.place)}</span>`:""}${d.time?`<span class="tag">⏱ ${esc(String(d.time))}分</span>`:""}</div>
+          ${caution}${tools}
+        </div>
       </div>
-    </div>
-    <div class="steps-h"><span class="k">手順</span><span class="rule"></span><span class="prog">${done}/${d.steps.length}</span></div>
-    ${steps}
-    <div class="finish">
-      <button class="fbtn" type="button" onclick="markDone(${d.id})">✓ やった！記録する</button>
-      <span class="log">${logHtml}</span>
-    </div>
-    <div class="printrow"><button class="printbtn" type="button" onclick="window.print()">🖨 印刷 / PDFで保存</button></div>`;
+      <div class="detail-right">
+        <div class="steps-h"><span class="k">手順</span><span class="rule"></span><span class="prog">${done}/${d.steps.length}</span></div>
+        ${steps}
+        <div class="finish">
+          <button class="fbtn" type="button" onclick="markDone(${d.id})">✓ やった！記録する</button>
+          <span class="log">${logHtml}</span>
+        </div>
+        <div class="printrow"><button class="printbtn" type="button" onclick="window.print()">🖨 印刷 / PDFで保存</button></div>
+      </div>
+    </div>`;
 }
 function toggleStep(i){
   viewState.checked[i]=!viewState.checked[i];
